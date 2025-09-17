@@ -61,7 +61,7 @@ constructor() {
     this.isGameOver = false;
     this.isTimerStarted = false;
 
-    this.playerName = '匿名玩家___移动端';
+    this.playerName = '匿名玩家';
     this.highScores = []; // 存储排行榜数据
     this.nameInput = null; // 用户名输入框
     this.leaderboardElements = {}; // 排行榜界面元素
@@ -110,12 +110,12 @@ create() {
     
     
     // 添加小圈作为目标
-    this.initialSmallRadius = 130 * this.scaleRatio; // 存储初始半径
+    this.initialSmallRadius = 150 * this.scaleRatio; // 存储初始半径
     this.targetCircle = this.add.circle(centerX, centerY, this.initialSmallRadius, 0x00000, 0);
     this.targetCircle.setStrokeStyle(6, 0xffffff);
     
     // 修改大圈创建方式 - 仅保留圆周
-    this.circle = this.add.circle(centerX, centerY, 180 * this.scaleRatio, 0x000000, 0); // 透明填充
+    this.circle = this.add.circle(centerX, centerY, 210 * this.scaleRatio, 0x000000, 0); // 透明填充
     this.circle.setStrokeStyle(4, 0xff0000); // 红色圆周
     
     // 创建生命值显示
@@ -514,7 +514,7 @@ resetGame() {
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
     this.scaleRatio = 1;
-    this.targetCircle.setRadius(100 * this.scaleRatio);
+    this.targetCircle.setRadius(150 * this.scaleRatio);
     
     // 添加提交状态标志
     this.isScoreSubmitted = false;
@@ -1126,7 +1126,7 @@ const config = {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
         width: 900,
-        height: 1600
+        height: 1600,
     }
 };
 
