@@ -110,12 +110,12 @@ create() {
     
     
     // 添加小圈作为目标
-    this.initialSmallRadius = 150 * this.scaleRatio; // 存储初始半径
+    this.initialSmallRadius = 100 * this.scaleRatio; // 存储初始半径
     this.targetCircle = this.add.circle(centerX, centerY, this.initialSmallRadius, 0x00000, 0);
     this.targetCircle.setStrokeStyle(6, 0xffffff);
     
     // 修改大圈创建方式 - 仅保留圆周
-    this.circle = this.add.circle(centerX, centerY, 210 * this.scaleRatio, 0x000000, 0); // 透明填充
+    this.circle = this.add.circle(centerX, centerY, 160 * this.scaleRatio, 0x000000, 0); // 透明填充
     this.circle.setStrokeStyle(4, 0xff0000); // 红色圆周
     
     // 创建生命值显示
@@ -514,7 +514,7 @@ resetGame() {
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
     this.scaleRatio = 1;
-    this.targetCircle.setRadius(150 * this.scaleRatio);
+    this.targetCircle.setRadius(100 * Math.min(window.innerWidth / 9, window.innerHeight / 16) * 0.045);
     
     // 添加提交状态标志
     this.isScoreSubmitted = false;
