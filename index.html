@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>军训小游戏中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #main-menu {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+        
+        .menu-header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .menu-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .menu-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .game-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.25);
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        .game-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .game-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .game-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .play-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .play-button:hover {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+            transform: scale(1.05);
+        }
+        
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+        
+        #game-container {
+            display: none;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        /* 移动端样式 */
+        @media (max-width: 768px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .menu-header h1 {
+                font-size: 2rem;
+            }
+            
+            .menu-header p {
+                font-size: 1rem;
+            }
+        }
+        
+        /* 防止文本选中 */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        /* 加载指示器 */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: white;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body class="no-select">
+    <button id="backButton" class="back-button">←</button>
+    
+    <div id="main-menu">
+        <div class="menu-header">
+            <h1>军训小游戏中心</h1>
+            <p>选择一个游戏开始你的军事训练之旅</p>
+        </div>
+        
+        <div class="games-grid">
+            <!-- 军训达人游戏 -->
+            <div class="game-card" data-url="game.html">
+                <div class="game-icon">🎯</div>
+                <div class="game-title">军训达人</div>
+                <div class="game-description">通过精准点击训练你的反应力和专注力，体验军人的精准执行力！</div>
+                <button class="play-button">开始游戏</button>
+            </div>
+            
+            <!-- 可以添加更多游戏 -->
+            <div class="game-card" data-url="https://example.com/game2">
+                <div class="game-icon">🏃</div>
+                <div class="game-title">障碍跑</div>
+                <div class="game-description">模拟军事障碍训练，考验你的速度和灵活性！</div>
+                <button class="play-button">开始游戏</button>
+            </div>
+            
+            <div class="game-card" data-url="https://example.com/game3">
+                <div class="game-icon">🔫</div>
+                <div class="game-title">射击训练</div>
+                <div class="game-description">精准射击训练，提升你的瞄准能力和稳定性！</div>
+                <button class="play-button">开始游戏</button>
+            </div>
+            
+            <div class="game-card" data-url="https://example.com/game4">
+                <div class="game-icon">🧠</div>
+                <div class="game-title">军事知识</div>
+                <div class="game-description">军事知识问答，检验你的军事理论水平！</div>
+                <button class="play-button">开始游戏</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>浙江理工大学</p>
+            <p>计算机科学与技术学院（人工智能学院）</p>
+            <p>军训宣传部</p>
+            <p>磨练意志，锻炼体魄</p>
+        </div>
+    </div>
+    
+    <div id="game-container"></div>
+
+    <script>
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameCards = document.querySelectorAll('.game-card');
+            const backButton = document.getElementById('backButton');
+            const mainMenu = document.getElementById('main-menu');
+            const gameContainer = document.getElementById('game-container');
+            
+            // 为每个游戏卡片添加点击事件
+            gameCards.forEach(card => {
+                const playButton = card.querySelector('.play-button');
+                playButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const gameUrl = card.getAttribute('data-url');
+                    loadGame(gameUrl);
+                });
+                
+                // 整个卡片也可以点击
+                card.addEventListener('click', function() {
+                    const gameUrl = card.getAttribute('data-url');
+                    loadGame(gameUrl);
+                });
+            });
+            
+            // 返回按钮事件
+            backButton.addEventListener('click', function() {
+                // 隐藏游戏容器，显示主菜单
+                gameContainer.style.display = 'none';
+                mainMenu.style.display = 'block';
+                backButton.style.display = 'none';
+                
+                // 清空游戏容器
+                gameContainer.innerHTML = '';
+            });
+            
+            // 加载游戏函数
+            function loadGame(url) {
+                if (url === 'game.html') {
+                    // 隐藏主菜单，显示游戏容器
+                    mainMenu.style.display = 'none';
+                    gameContainer.style.display = 'flex';
+                    backButton.style.display = 'flex';
+                    
+                    // 显示加载指示器
+                    gameContainer.innerHTML = '<div class="loading">游戏加载中...</div>';
+                    
+                    // 使用iframe加载游戏页面
+                    setTimeout(function() {
+                        gameContainer.innerHTML = '<iframe src="game.html" style="width:100%;height:100%;border:none;"></iframe>';
+                    }, 500);
+                } else {
+                    // 如果是外部链接，直接跳转
+                    window.open(url, '_blank');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
