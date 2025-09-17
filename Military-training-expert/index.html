@@ -29,8 +29,8 @@
 
         #game-container {
             width: 100%;
-            max-width: 1000px; /* 增大最大宽度 */
-            height: 750px; /* 增大高度 */
+            max-width: 1000px;
+            height: 750px;
             margin: 20px auto;
             position: relative;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
@@ -73,31 +73,12 @@
             color: #333;
         }
 
-        #back-button:hover {
-            background: rgba(255, 255, 255, 1);
-        }
-
-        @media (max-width: 1200px) {
-            #game-container {
-                max-width: 900px;
-                height: 680px;
-            }
-        }
-
-        @media (max-width: 992px) {
-            #game-container {
-                max-width: 750px;
-                height: 560px;
-            }
-        }
-
         @media (max-width: 768px) {
             #game-container {
                 width: 95%;
                 height: 80vh;
                 margin: 10px auto;
             }
-            
             #back-button {
                 top: 10px;
                 left: 10px;
@@ -106,37 +87,52 @@
                 font-size: 1.2rem;
             }
         }
-        
-        @media (max-width: 480px) {
-            #game-container {
-                height: 70vh;
-            }
-        }
     </style>
 </head>
 <body class="no-select">
     <a href="../index.html" id="back-button">←</a>
-    
+
     <div id="game-container">
         <div id="loading-screen">游戏加载中...</div>
     </div>
 
-    <!-- 引入 Phaser 游戏引擎 -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
-    
-    <!-- 引入游戏主脚本 -->
-    <script src="Military-training-expert.js"></script>
-    
+    <!-- 动态插入 Phaser 和游戏脚本 -->
     <script>
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 等待 Phaser 和游戏脚本加载完成
-            setTimeout(function() {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
+        // 设备检测函数
+        function isMobileDevice() {
+            return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|BlackBerry|WebOS|Mobile/i.test(navigator.userAgent);
+        }
+
+        // 异步加载脚本
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = callback;
+            script.onerror = () => console.error(`Failed to load script: ${src}`);
+            document.head.appendChild(script);
+        }
+
+        // 页面加载完成后判断设备并加载对应脚本
+        document.addEventListener('DOMContentLoaded', function () {
+            const loadingScreen = document.getElementById('loading-screen');
+
+            // 先加载 Phaser
+            loadScript('https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js', function () {
+                // 根据设备类型加载不同游戏脚本
+                if (isMobileDevice()) {
+                    loadScript('Military-training-expert_2.js', hideLoadingScreen);
+                } else {
+                    loadScript('Military-training-expert.js', hideLoadingScreen);
                 }
-            }, 1000);
+            });
+
+            function hideLoadingScreen() {
+                setTimeout(() => {
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'none';
+                    }
+                }, 500); // 确保资源渲染完成
+            }
         });
     </script>
 </body>
