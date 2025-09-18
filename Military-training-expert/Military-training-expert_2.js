@@ -43,6 +43,7 @@ constructor() {
         btnText: null
     };
      this.isShowingLeaderboard = false;
+     this.wasShrinking = false;
     this.LevelName=['预备兵','列兵','上等兵','军士','少尉','中尉','上尉','少校',
                     '中校','上校','少将','中将','上将'];
     this.leveldesc=[
@@ -1220,6 +1221,10 @@ showLeaderboard() {
     // 设置标志位，表示正在显示排行榜
     this.isShowingLeaderboard = true;
     
+    // 暂停圆圈动画
+    this.wasShrinking = this.isShrinking; // 保存当前收缩状态
+    this.isShrinking = false; // 暂停圆圈收缩
+    
     // 隐藏游戏结束界面
     this.hideGameOverScreen();
     
@@ -1272,6 +1277,9 @@ showLeaderboard() {
         if (this.timerEvent) {
             this.timerEvent.paused = false;
         }
+        
+        // 恢复圆圈动画
+        this.isShrinking = this.wasShrinking;
         
         // 重置标志位
         this.isShowingLeaderboard = false;
