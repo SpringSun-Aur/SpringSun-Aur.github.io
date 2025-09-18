@@ -9,7 +9,12 @@ class BootScene extends Phaser.Scene {
         // 预加载军衔图片
         for (let i = 0; i < 13; i++) {
             this.load.image(`rank-${i}`, `image/${i}.png`);
-        }
+        } 
+        // 预加载音频文件
+        this.load.audio('click', 'audio/click.mp3');
+        this.load.audio('perfectClick', 'audio/perfect_click.mp3');
+        this.load.audio('levelUp', 'audio/level_up.mp3');
+        this.load.audio('fail', 'audio/fail.mp3');
     }
 
     create() {
@@ -27,6 +32,7 @@ constructor() {
         titleText: null,
         scoreText: null,
         restartBtn: null,
+        rankImage: null,
         btnText: null
     };
     this.gameOverdes = {
@@ -40,19 +46,19 @@ constructor() {
     this.LevelName=['预备兵','列兵','上等兵','军士','少尉','中尉','上尉','少校',
                     '中校','上校','少将','中将','上将'];
     this.leveldesc=[
-        "预备兵：新兵预备入伍，考察预备阶段。军训刚开始，希望你能坚持下去，培养吃苦耐劳的精神！大学生活即将开始，军训是你的第一课，加油！",
-        "列兵：最低士兵衔，新兵入伍授予，基础训练阶段。作为军训新生，要认真对待每一个训练项目，打好基础！就像学习一样，基础很重要！",
-        "上等兵：服役满一年列兵晋升，担任老兵骨干。经过一年磨练，你已经成为同学中的榜样，要互帮互助！大学中也要发挥榜样的力量！",
-        "下士：军士初级衔，班长或技术岗位，服役满三年。作为班干部，需要协助教官管理班级，培养责任心！这将帮助你在学生工作中脱颖而出！",
-        "少尉：军官最低阶，排职干部，军校毕业授予。军训汇演时的排长角色，需要统筹协调整个排的表现！正如未来你需要组织各种活动！",
-        "中尉：少尉满两年晋升，副连职或技术军官。作为副连长，要协助连长做好各项组织工作！学会合作与协调，这对你未来实习工作很有帮助！",
-        "上尉：中尉满三年晋升，连职主官或机关参谋。担任连长职务，需要全面负责连队各项事务！培养你的领导力，为将来成为学生干部做准备！",
-        "少校：上尉满四年晋升，营职主官或机关科长。作为营级干部，需要统筹多个连队的训练！就像管理社团一样，需要全局思维！",
-        "中校：少校满四年晋升，团副职或正营职军官。担任团副职需要协助团长管理整个团级单位！培养你的大局观和管理能力！",
-        "上校：中校满四年晋升，团职主官或师旅副职。作为团级主官，需要对整个团的训练成效负责！这就像你将来要对团队项目负责一样！",
-        "少将：将官初级，副战区职，肩章一星金枝叶。将军级别的干部，需要统筹大单位的军事工作！为将来成为企业高管打基础！",
-        "中将：正战区职或副战区职，肩章两星金枝叶。高级将领，负责重要战区的军事指挥！培养你的战略思维和决策能力！",
-        "上将：最高常设军衔，战区正职，肩章三星金枝叶。军队高级指挥员，负责整个战区的军事部署！这正如你将来要成为行业领军人才！"
+        "预备兵：新兵预备入伍，考察预备阶段。军训刚开始，你脚步不稳，意志不定，新兵，你还得好好练",
+        "列兵：最低士兵衔，新兵入伍授予，基础训练阶段。你已习惯军训的作息，学的倒是不慢，继续加油",
+        "上等兵：服役满一年列兵晋升，担任老兵骨干。经过连续多天的训练，你已从茫茫新生中脱颖而出，能做成这样，已经很好了",
+        "下士：军士初级衔，班长或技术岗位，服役满三年。你担任了军训管理的职责，帮助教官指导其他学生，但你仍需继续学习",
+        "少尉：军官最低阶，排职干部，军校毕业授予。军训过去小半，你挺拔的身姿和生风的步伐赢得了全排学生的赞叹与敬佩",
+        "中尉：少尉满两年晋升，副连职或技术军官。教官推荐你去别的排进行军训表演，你被更多人赞叹了！",
+        "上尉：中尉满三年晋升，连职主官或机关参谋。军训过半，你已是全营的风云人物，继续晋升吧！",
+        "少校：上尉满四年晋升，营职主官或机关科长。不可思议！训练使你反应迅速，像是真正的军人！",
+        "中校：少校满四年晋升，团副职或正营职军官。大局观日益重要。你的专注力和快速反应能力大幅提高，这与整体训练成效密不可分。",
+        "上校：中校满四年晋升，团职主官或师旅副职。汇演在即，每个排都需要为整体荣誉而努力。你必须和其他同学目标一致，才能成功。",
+        "少将：将官初级，副战区职，肩章一星金枝叶。战略思维开始体现，需要分析、判断和决策。你参加的拉练活动和定向越野，正需要这样的智慧与魄力。",
+        "中将：正战区职或副战区职，肩章两星金枝叶。明天将是最终检验，所有的汗水与努力都将汇聚成一场精彩的演出，需要你像将领一样沉稳指挥自己的身体部队",
+        "上将：最高常设军衔，战区正职，肩章三星金枝叶。阅兵日！你是接受检阅的“士兵将军”！坚持到最后，你收获了钢铁般的意志、深厚的友谊和无比的骄傲。恭喜你，圆满完成军训这门大学第一课！"
     ];
 
     this.circle = null;
@@ -108,6 +114,12 @@ create() {
     // 加载资源
     this.getHighScoreFromStorage();
     
+    // 初始化音频
+    this.sounds.click = this.sound.add('click');
+    this.sounds.perfectClick = this.sound.add('perfectClick');
+    this.sounds.levelUp = this.sound.add('levelUp');
+    this.sounds.fail = this.sound.add('fail');
+ 
     // 计算中心点坐标
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
@@ -117,12 +129,12 @@ create() {
     
     
     // 添加小圈作为目标
-    this.initialSmallRadius = 100 * this.scaleRatio; // 存储初始半径
+    this.initialSmallRadius = 150 * this.scaleRatio; // 存储初始半径
     this.targetCircle = this.add.circle(centerX, centerY, this.initialSmallRadius, 0x00000, 0);
     this.targetCircle.setStrokeStyle(6, 0xffffff);
     
     // 修改大圈创建方式 - 仅保留圆周
-    this.circle = this.add.circle(centerX, centerY, 160 * this.scaleRatio, 0x000000, 0); // 透明填充
+    this.circle = this.add.circle(centerX, centerY, 210 * this.scaleRatio, 0x000000, 0); // 透明填充
     this.circle.setStrokeStyle(4, 0xff0000); // 红色圆周
     
     // 创建生命值显示
@@ -145,9 +157,9 @@ updateUI() {
         this.playerNameText.setText(`玩家: ${this.playerName}`);
     }
     this.levelText.setText(`⭐${this.LevelName[this.level-1]}`);
-    this.timerText.setText(`  ⏱${this.gameTimer}s`);
+    this.timerText.setText(`⏱${this.gameTimer}s`);
     this.currentScoreText.setText(`💯${this.currentScore}`);  
-    this.comboText.setText(`  🔥${this.combo}`);
+    this.comboText.setText(`🔥${this.combo}`);
     this.livesText.setText(hearts);
     
     // 连击数高亮
@@ -205,7 +217,7 @@ createTopInfoBar() {
     xPos += spacing;
     
     // 连击数
-    this.comboText = this.add.text(xPos, yPos, `  🔥${this.combo}`, { 
+    this.comboText = this.add.text(xPos, yPos, `🔥${this.combo}`, { 
         fontSize: Math.floor(22 * this.scaleRatio) + 'px',
         fill: '#9b59b6'
     }).setOrigin(0, 0.5);
@@ -219,7 +231,7 @@ createTopInfoBar() {
     }).setOrigin(0, 0.5);
     
     // 质量显示
-    this.qualityText = this.add.text(xPos + spacing, yPos, '准备...', { 
+    this.qualityText = this.add.text(xPos + spacing, yPos, '', { 
         fontSize: Math.floor(22 * this.scaleRatio) + 'px',
         fill: '#7f8c8d'
     }).setOrigin(0, 0.5);
@@ -305,6 +317,12 @@ levelUp() {
     this.levelText.setText(`⭐${this.LevelName[this.level-1]}`).setColor('#e67e22');
     this.showFeedbackLevel(`军衔提升！当前为${this.LevelName[this.level-1]}`, '#e67e22');
     this.cameras.main.shake(100, 0.01);
+    
+    // 播放升级音效
+    if (this.sounds.levelUp) {
+        this.sounds.levelUp.play();
+    }
+    
     if (this.level <= 3||this.level>=7&&this.level<=10||this.level>13) {
         this.shrinkSpeed += 5;
     } 
@@ -312,7 +330,6 @@ levelUp() {
         const newRadius = Math.max(10, this.targetCircle.radius - 15 * this.scaleRatio);
         this.targetCircle.setRadius(newRadius);
     }
-    
 }
 
 
@@ -410,39 +427,55 @@ onPointerDown(pointer) {
     let feedback = '';
     
     // 根据半径比例判定
-    if (radiusRatio >= 0.9 && radiusRatio <= 1.1) {
+    if (radiusRatio >= 0.95 && radiusRatio <= 1.05) {
         points = 100 + (this.level * 10);
         quality = '完美!';
         textColor = '#27ae60';
         feedback = '优秀！时机完美！';
         this.combo++;
         
+        // 播放完美点击音效
+        if (this.sounds.perfectClick) {
+            this.sounds.perfectClick.play();
+        }
+        
         if (this.combo >= 3) {
             this.showComboFeedback();
         }
     } 
-    else if ((radiusRatio >= 0.5 && radiusRatio < 0.9) || 
-             (radiusRatio > 1.1 && radiusRatio <= 1.6)) {
+    else if ((radiusRatio >= 0.85 && radiusRatio < 0.95) || 
+             (radiusRatio > 1.05 && radiusRatio <= 1.15)) {
         points = 60 + (this.level * 5);
         quality = '良好';
         textColor = '#f39c12';
         feedback = '不错，接近完美时机！';
         if(this.combo%2)this.combo=(this.combo-1)/2;
         else this.combo/=2;
+        
+        // 播放普通点击音效
+        if (this.sounds.click) {
+            this.sounds.click.play();
+        }
     }
-    else if ((radiusRatio >= 0.2 && radiusRatio < 0.5) || 
-             (radiusRatio > 1.6 && radiusRatio <= 2.0)) {
+    else if ((radiusRatio >= 0.75 && radiusRatio < 0.85) || 
+             (radiusRatio > 1.15 && radiusRatio <= 1.25)) {
         points = Math.max(20, Math.floor(40 - Math.abs(radiusRatio - 1) * 40));
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
         this.combo-=2;
+        
+        // 播放普通点击音效
+        if (this.sounds.click) {
+            this.sounds.click.play();
+        }
     }
     else { // 比例过远视为失败
         this.combo=0;
         this.missClick();
         return;
     }
+    
     if(this.combo<=0)this.combo=0;
     if(this.combo>=10)points+=(this.level * 15);
     else if(this.combo>=6)points+=(this.level * 10);
@@ -477,8 +510,13 @@ missClick() {
     this.updateLivesDisplay();
     this.combo = 0;
     
+    // 播放失败音效
+    if (this.sounds.fail) {
+        this.sounds.fail.play();
+    }
+    
     if (this.comboText) {
-        this.comboText.setText('  🔥0').setColor('#9b59b6');
+        this.comboText.setText('🔥0').setColor('#9b59b6');
     }
     
     if (this.qualityText) {
@@ -521,7 +559,7 @@ resetGame() {
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
     this.scaleRatio = 1;
-    this.targetCircle.setRadius(100 * Math.min(window.innerWidth / 9, window.innerHeight / 16) * 0.045);
+    this.targetCircle.setRadius(150 * this.scaleRatio);
     
     // 添加提交状态标志
     this.isScoreSubmitted = false;
@@ -564,7 +602,7 @@ updateScore(points, quality, textColor, feedback) {
         } else {
             this.comboText.setColor('#9b59b6');
         }
-        this.comboText.setText(`  🔥${this.combo}`);
+        this.comboText.setText(`🔥${this.combo}`);
     }
 
     if (this.highScoreText && this.currentScore > this.highScore) {
@@ -755,7 +793,7 @@ wrapText(text, maxWidth) {
     return text;
 }
 
-// 修改 endGame 方法中的军衔描述显示部分
+// 修改 endGame 方法中的文字大小和位置
 endGame(reason) {
     // 清理倒计时事件
     
@@ -786,107 +824,95 @@ endGame(reason) {
         0x000000, 0.7
     ).setDepth(1000); // 设置高深度值确保在最上层
     
-    // 创建游戏结束标题
+    // 创建游戏结束标题（放大文字并上移）
     this.gameOverElements.titleText = this.add.text(
-        centerX, centerY - 120, 
-        `       训练结束\n当前军衔为: ${this.LevelName[this.level-1]}`, 
+        centerX, centerY - 150, 
+        `训练结束\n当前军衔为: ${this.LevelName[this.level-1]}`, 
         {
-            fontSize: '48px',
+            fontSize: '70px',
             fontFamily: 'Arial',
             color: '#FFD700',
             stroke: '#8B4513',
-            strokeThickness: 4
+            strokeThickness: 6,
+            align: 'center'
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 在 endGame 方法中替换添加军衔图片的代码
-    // 添加军衔图片 - 在军衔描述上方
     const rankIndex = Math.min(this.level - 1, 12); // 确保索引不超过12
+    // 上移军衔图片
     this.gameOverElements.rankImage = this.add.image(
         centerX, 
-        centerY - 500, 
+        centerY - 690, 
         `rank-${rankIndex}`
     ).setDepth(1001);
 
     // 根据需要调整图片大小
-    this.gameOverElements.rankImage.setScale(0.5); // 调整缩放比例
+    this.gameOverElements.rankImage.setScale(0.8); // 稍微增大图片
     
-    // 注意：由于 Phaser 无法直接加载本地文件路径，我们需要预先加载图片资源
-    // 或者使用 base64 编码的图片数据
-    
-    // 修改军衔描述显示，支持多行文本
+    // 修改军衔描述显示，支持多行文本（放大文字并上移）
     this.gameOverdes.titleText = this.add.text(
-        centerX, centerY - 300, 
-        this.wrapText(`${this.leveldesc[this.level-1]}`, 50), // 位置调整以适应图片
+        centerX, centerY - 450, 
+        `${this.leveldesc[this.level-1]}`, 
         {
-            fontSize: '24px',
+            fontSize: '48px',  // 增大字体
             fontFamily: 'Arial',
             color: '#000000',
             stroke: '#ffffff',
-            strokeThickness: 5,
+            strokeThickness: 6,
             align: 'center',
-            wordWrap: { width: 500, useAdvancedWrap: true }
+            wordWrap: { width: 700, useAdvancedWrap: true },  // 增加换行宽度
+            lineSpacing: 12  // 增加行间距
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 创建得分显示
+    // 创建得分显示（放大文字）
     this.gameOverElements.scoreText = this.add.text(
-        centerX, centerY + 30, 
+        centerX, centerY + 50, 
         `最终得分: ${this.currentScore}`, 
         {
-            fontSize: '36px',
-            color: '#4cd964'
+            fontSize: '52px',
+            color: '#4cd964',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
     
-  const buttonSpacing = 60 * this.scaleRatio;
+    const buttonSpacing = 85 * this.scaleRatio;
 
-    // 添加提示文字"请输入用户名"
+    // 添加提示文字"请输入用户名"（放大文字）
     this.gameOverElements.usernamePrompt = this.add.text(
         centerX,
-        centerY + 80,
+        centerY + 130,
         '请输入用户名',
         {
-            fontSize: Math.floor(16 * this.scaleRatio) + 'px',
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px',
             fill: '#7f8c8d',
             fontStyle: 'italic'
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 用户名输入框 - 正确加载保存的用户名
+    // 用户名输入框 - 正确加载保存的用户名（调整位置和大小）
     this.gameOverElements.nameInput = this.add.dom(
         centerX,
-        centerY + 100,
+        centerY + 180,
         'input',
         {
             type: 'text',
             placeholder: '输入你的名字',
             value: '', // 初始为空
             style: `
-                width: ${200 * this.scaleRatio}px; 
-                height: ${30 * this.scaleRatio}px; 
-                font-size: ${14 * this.scaleRatio}px; 
+                width: ${570 * this.scaleRatio}px; 
+                height: ${200 * this.scaleRatio}px; 
+                font-size: ${80 * this.scaleRatio}px; 
                 text-align: center;
                 background-color: white;
-                border: 2px solid #3498db;
-                border-radius: 5px;
-                padding: 5px;
+                border: 3px solid #3498db;
+                border-radius: 8px;
+                padding: 8px;
                 color: #2c3e50;
                 outline: none;
             `
         }
     ).setDepth(1001);
-
-    // 在DOM元素创建后设置值
-    this.time.delayedCall(100, () => {
-        if (this.gameOverElements.nameInput && this.gameOverElements.nameInput.node) {
-            const inputElement = this.gameOverElements.nameInput.node;
-            // 只有当用户名不是默认值时才填充
-            if (this.playerName && this.playerName !== '匿名玩家') {
-                inputElement.value = this.playerName;
-            }
-        }
-    });
 
     // 在DOM元素创建后设置值
     this.time.delayedCall(100, () => {
@@ -909,8 +935,6 @@ endGame(reason) {
     inputElement.style.position = 'absolute';
     inputElement.style.display = 'block';
 
-
-
     // 确保输入框附加到DOM
     if (!document.body.contains(this.gameOverElements.nameInput.node)) {
         document.body.appendChild(this.gameOverElements.nameInput.node);
@@ -920,43 +944,42 @@ endGame(reason) {
     this.gameOverElements.nameInput.setScrollFactor(0);
     
     if (this.isMobile) {
-        this.gameOverElements.nameInput.node.style.fontSize = '24px';
-        this.gameOverElements.nameInput.node.style.height = '50px';
+        this.gameOverElements.nameInput.node.style.fontSize = '30px';
+        this.gameOverElements.nameInput.node.style.height = '265px';
     }
-    // 强制显示输入框
-    inputElement.style.border = '2px solid red'; // 添加明显边框便于调试
-    inputElement.style.zIndex = '1001';
-    inputElement.style.position = 'absolute';
 
-    // 提交按钮
+    // 提交按钮（放大按钮和文字）
     this.gameOverElements.submitBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 180 + buttonSpacing, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x4CAF50
     )
     .setInteractive()
     .setDepth(1001);
     this.gameOverElements.submitText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing, 
+        centerY + 180 + buttonSpacing, 
         '提交分数', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
+    
     if (this.isScoreSubmitted) {
         this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
         this.gameOverElements.submitText.setText('已提交');
     }
-    // 排行榜按钮
+    
+    // 排行榜按钮（放大按钮和文字）
     this.gameOverElements.leaderboardBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing * 2, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 180 + buttonSpacing * 2, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x2196F3
     )
     .setInteractive()
@@ -964,20 +987,21 @@ endGame(reason) {
 
     this.gameOverElements.leaderboardText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing * 2, 
+        centerY + 180 + buttonSpacing * 2, 
         '查看排行榜', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 重新训练按钮
+    // 重新训练按钮（放大按钮和文字）
     this.gameOverElements.restartBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing * 3, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 180 + buttonSpacing * 3, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x556B2F
     )
     .setInteractive()
@@ -985,48 +1009,49 @@ endGame(reason) {
 
     this.gameOverElements.btnText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing * 3, 
+        centerY + 180 + buttonSpacing * 3, 
         '重新训练', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
     
-  // 修改 endGame 方法中的提交按钮事件，添加用户名长度验证
-this.gameOverElements.submitBtn.on('pointerdown', () => {
-    // 检查是否已经提交过分数
-    if (this.isScoreSubmitted) {
-        return; // 如果已经提交过，直接返回
-    }
-    
-    const inputElement = this.gameOverElements.nameInput.node;
-    const username = inputElement.value.trim(); // 去除首尾空格
-    
-    // 验证用户名长度
-    if (username.length <= 0 || username.length > 15) {
-        // 显示错误提示在最前面
-        this.showFeedback('用户名长度不合理，需要1-15个字符之间', '#e74c3c');
-        // 确保反馈文本在最前面显示
-        if (this.feedbackText) {
-            this.feedbackText.setDepth(1002); // 设置更高的深度值确保在最前面
+    // 修改 endGame 方法中的提交按钮事件，添加用户名长度验证
+    this.gameOverElements.submitBtn.on('pointerdown', () => {
+        // 检查是否已经提交过分数
+        if (this.isScoreSubmitted) {
+            return; // 如果已经提交过，直接返回
         }
-        return;
-    }
-    
-    if (username) {
-        // 设置提交状态标志
-        this.isScoreSubmitted = true;
         
-        // 更改按钮外观以表示已提交
-        this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
-        this.gameOverElements.submitText.setText('已提交').setColor('#666666');
+        const inputElement = this.gameOverElements.nameInput.node;
+        const username = inputElement.value.trim(); // 去除首尾空格
         
-        this.playerName = username; // 更新玩家名称变量
-        this.saveHighScore();
-        this.showLeaderboard();
-    }
-});
+        // 验证用户名长度
+        if (username.length <= 0 || username.length > 15) {
+            // 显示错误提示在最前面
+            this.showFeedback('用户名长度不合理，需要1-15个字符之间', '#e74c3c');
+            // 确保反馈文本在最前面显示
+            if (this.feedbackText) {
+                this.feedbackText.setDepth(1002); // 设置更高的深度值确保在最前面
+            }
+            return;
+        }
+        
+        if (username) {
+            // 设置提交状态标志
+            this.isScoreSubmitted = true;
+            
+            // 更改按钮外观以表示已提交
+            this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
+            this.gameOverElements.submitText.setText('已提交').setColor('#666666');
+            
+            this.playerName = username; // 更新玩家名称变量
+            this.saveHighScore();
+            this.showLeaderboard();
+        }
+    });
     
     this.gameOverElements.leaderboardBtn.on('pointerdown', () => {
         this.showLeaderboard();
@@ -1160,8 +1185,8 @@ const config = {
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 900,
-        height: 1600,
+        width: 1200,
+        height: 1600
     }
 };
 
