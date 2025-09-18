@@ -43,6 +43,9 @@ constructor() {
         btnText: null
     };
     
+    this.isShowingLeaderboard = false;
+    this.wasShrinking = false;
+
     this.LevelName=['预备兵','列兵','上等兵','军士','少尉','中尉','上尉','少校',
                     '中校','上校','少将','中将','上将'];
     this.leveldesc=[
@@ -59,6 +62,22 @@ constructor() {
         "少将：将官初级，副战区职，肩章一星金枝叶。战略思维开始体现，需要分析、判断和决策。你参加的拉练活动和定向越野，正需要这样的智慧与魄力。",
         "中将：正战区职或副战区职，肩章两星金枝叶。明天将是最终检验，所有的汗水与努力都将汇聚成一场精彩的演出，需要你像将领一样沉稳指挥自己的身体部队",
         "上将：最高常设军衔，战区正职，肩章三星金枝叶。阅兵日！你是接受检阅的“士兵将军”！坚持到最后，你收获了钢铁般的意志、深厚的友谊和无比的骄傲。恭喜你，圆满完成军训这门大学第一课！"
+    ];
+    this.levelsc=[
+        300,
+        700,
+        1300,
+        1800,
+        2700,
+        3600,
+        5400,
+        7200,
+        8100,
+        9000,
+        9900,
+        10800,
+        11600,
+        12400
     ];
 
     this.circle = null;
@@ -124,9 +143,7 @@ create() {
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
     
-    
     // 创建主游戏元素
-    
     
     // 添加小圈作为目标
     this.initialSmallRadius = 150 * this.scaleRatio; // 存储初始半径
@@ -146,11 +163,13 @@ create() {
     // 显示开始提示
     this.showStartPrompt();
     
-    // 添加键盘支持（桌面端）
-    if (!this.isMobile) {
-        this.setupKeyboardControls();
-    }
+    // 添加键盘支持
+    this.setupKeyboardControls();
+    
+    // 禁用鼠标点击全局事件
+    this.input.mouse.capture = true;
 }
+
 updateUI() {
     const hearts = '❤️'.repeat(this.lives) + '♡'.repeat(3 - this.lives);
     if (this.playerNameText) {
@@ -337,7 +356,7 @@ showStartPrompt() {
     const centerX = this.cameras.main.width /2;
     const centerY = this.cameras.main.height / 2 + 150 * this.scaleRatio;
 
-    const startText = this.add.text(centerX, centerY, '🎯 点击屏幕开始训练！', { 
+    const startText = this.add.text(centerX, centerY, '🎯 按空格键开始训练！', { 
         fontSize: Math.floor(this.isMobile ? 36 : 40 * this.scaleRatio) + 'px', 
         fill: '#2c3e50',
         fontStyle: 'bold',
@@ -354,7 +373,8 @@ showStartPrompt() {
         repeat: -1
     });
 
-    this.input.once('pointerdown', () => {
+    // 修改为监听空格键而不是鼠标点击
+    const startKeyListener = this.input.keyboard.on('keydown-SPACE', () => {
         startText.destroy();
         this.startShrinking();
     });
@@ -362,13 +382,21 @@ showStartPrompt() {
 
 setupKeyboardControls() {
     this.input.keyboard.on('keydown-SPACE', () => {
-        // 如果是第一次按键，启动计时器
-        if (!this.isTimerStarted && !this.isGameOver) {
-            this.startGameTimer();
+        // 如果正在显示排行榜，不处理空格键
+        if (this.isShowingLeaderboard) {
+            return;
         }
         
-        if (this.isShrinking) {
-            this.onPointerDown({}, this.circle);
+        // 如果是第一次按键，启动计时器
+        if (!this.isTimerStarted && !this.isGameOver) {
+            console.log('开始计时');
+            this.startGameTimer();
+        }
+
+        // 触发点击事件
+        else{
+            console.log('开始判断');
+            this.onPointerDown();
         }
     });
 }
@@ -411,6 +439,11 @@ showComboFeedback() {
 }
 
 onPointerDown(pointer) {
+    // 如果正在显示排行榜，不处理点击事件
+    if (this.isShowingLeaderboard) {
+        return;
+    }
+    
     if (!this.isTimerStarted && !this.isGameOver) {
         this.startGameTimer();
     }
@@ -488,10 +521,15 @@ onPointerDown(pointer) {
 
 startShrinking() {
     this.isShrinking = true;
-    this.input.on('pointerdown', this.onPointerDown, this);
+    //this.input.on('pointerdown', this.onPointerDown, this);
 }
 
 update(time, delta) {
+    // 如果正在显示排行榜，不更新游戏逻辑
+    if (this.isShowingLeaderboard) {
+        return;
+    }
+    
     if (this.isShrinking && !this.isGameOver) {
         const scaleDelta = (this.shrinkSpeed / 1000) * (delta / 16.67);
         this.circle.scaleX -= scaleDelta;
@@ -503,13 +541,12 @@ update(time, delta) {
         }
     }
 }
-
-
 missClick() {
     this.lives--;
     this.updateLivesDisplay();
     this.combo = 0;
     
+    console.log(`Input value:${this.lives}`); 
     // 播放失败音效
     if (this.sounds.fail) {
         this.sounds.fail.play();
@@ -586,8 +623,7 @@ resetGame() {
 updateScore(points, quality, textColor, feedback) {
     this.currentScore += points;
     
-
-    if (this.currentScore / 800 >  this.level && this.level <= 12 ) {
+    if (this.level < this.levelsc.length && this.currentScore >= this.levelsc[this.level - 1] && this.level <= 12) {
         this.levelUp();
     }
 
@@ -715,8 +751,6 @@ showFeedback(text, color) {
 }
 
 
-
-
 resetCircle() {
     if (this.isGameOver) return;
     
@@ -796,7 +830,7 @@ wrapText(text, maxWidth) {
 // 修改 endGame 方法中的军衔描述显示部分
 endGame(reason) {
     // 清理倒计时事件
-    
+    this.lives=3;
     this.leaderboardButton.setInteractive(true);
 
     if (this.timerEvent) {
@@ -889,7 +923,7 @@ endGame(reason) {
     // 用户名输入框 - 正确加载保存的用户名（增大尺寸）
     this.gameOverElements.nameInput = this.add.dom(
         centerX,
-        centerY + 180,
+        centerY + 110,
         'input',
         {
             type: 'text',
@@ -938,11 +972,7 @@ endGame(reason) {
 
     this.gameOverElements.nameInput.setInteractive();
     this.gameOverElements.nameInput.setScrollFactor(0);
-    
-    if (this.isMobile) {
-        this.gameOverElements.nameInput.node.style.fontSize = '16px';
-        this.gameOverElements.nameInput.node.style.height = '16px';
-    }
+
     // 强制显示输入框
     inputElement.style.border = '2px solid red'; // 添加明显边框便于调试
     inputElement.style.zIndex = '1001';
@@ -1058,29 +1088,84 @@ this.gameOverElements.submitBtn.on('pointerdown', () => {
     });
 }
 
+hideGameOverScreen() {
+    // 隐藏游戏结束界面的所有元素
+    if (this.gameOverElements.bg) this.gameOverElements.bg.setVisible(false);
+    if (this.gameOverElements.titleText) this.gameOverElements.titleText.setVisible(false);
+    if (this.gameOverElements.scoreText) this.gameOverElements.scoreText.setVisible(false);
+    if (this.gameOverElements.nameInput) this.gameOverElements.nameInput.setVisible(false);
+    if (this.gameOverElements.usernamePrompt) this.gameOverElements.usernamePrompt.setVisible(false);
+    if (this.gameOverElements.submitBtn) this.gameOverElements.submitBtn.setVisible(false);
+    if (this.gameOverElements.submitText) this.gameOverElements.submitText.setVisible(false);
+    if (this.gameOverElements.leaderboardBtn) this.gameOverElements.leaderboardBtn.setVisible(false);
+    if (this.gameOverElements.restartBtn) this.gameOverElements.restartBtn.setVisible(false);
+    if (this.gameOverElements.btnText) this.gameOverElements.btnText.setVisible(false);
+    if (this.gameOverElements.rankImage) this.gameOverElements.rankImage.setVisible(false);
+    if (this.gameOverdes.titleText) this.gameOverdes.titleText.setVisible(false);
+    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(false);
 
+    
+}
+
+showGameOverScreen() {
+    // 显示游戏结束界面的所有元素
+    if (this.gameOverElements.bg) this.gameOverElements.bg.setVisible(true);
+    if (this.gameOverElements.titleText) this.gameOverElements.titleText.setVisible(true);
+    if (this.gameOverElements.scoreText) this.gameOverElements.scoreText.setVisible(true);
+    if (this.gameOverElements.nameInput) this.gameOverElements.nameInput.setVisible(true);
+    if (this.gameOverElements.usernamePrompt) this.gameOverElements.usernamePrompt.setVisible(true);
+    if (this.gameOverElements.submitBtn) this.gameOverElements.submitBtn.setVisible(true);
+    if (this.gameOverElements.submitText) this.gameOverElements.submitText.setVisible(true);
+    if (this.gameOverElements.leaderboardBtn) this.gameOverElements.leaderboardBtn.setVisible(true);
+    if (this.gameOverElements.restartBtn) this.gameOverElements.restartBtn.setVisible(true);
+    if (this.gameOverElements.btnText) this.gameOverElements.btnText.setVisible(true);
+    if (this.gameOverElements.rankImage) this.gameOverElements.rankImage.setVisible(true);
+    if (this.gameOverdes.titleText) this.gameOverdes.titleText.setVisible(true);
+    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(true);
+    
+}
 showLeaderboard() {
-
-    this.leaderboardButton.setInteractive(false);
-    // 清理游戏结束界面
-    this.cleanupGameOverScreen();
+    // 禁用排行榜按钮防止重复点击
+    this.leaderboardButton.disableInteractive();
+    
+    // 设置标志位，表示正在显示排行榜
+    this.isShowingLeaderboard = true;
+    
+    // 检查是否在游戏结束界面
+    const isGameOverScreen = this.gameOverElements.bg !== null && this.gameOverElements.bg.active;
+    
+    // 如果在游戏结束界面，隐藏结束界面元素
+    if (isGameOverScreen) {
+        this.hideGameOverScreen();
+    } else {
+        // 不在游戏结束界面时，保存当前游戏状态
+        this.wasShrinking = this.isShrinking;
+        
+        // 暂停游戏收缩动画
+        this.isShrinking = false;
+        
+        // 暂停游戏计时器
+        if (this.timerEvent) {
+            this.timerEvent.paused = true;
+        }
+    }
     
     // 加载排行榜数据
     this.loadHighScores();
     
-    const centerX = this.cameras.main.width /2;
-    const centerY = this.cameras.main.height /2;
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
     
     // 创建排行榜背景
     this.leaderboardElements.bg = this.add.rectangle(
         centerX, centerY, 600, 500, 0x000000, 0.8
-    ).setStrokeStyle(3, 0x8B4513);
+    ).setStrokeStyle(3, 0x8B4513).setDepth(1000);
     
     // 排行榜标题
     this.leaderboardElements.title = this.add.text(
         centerX, centerY - 200, '排行榜', 
         { fontSize: '48px', color: '#FFD700' }
-    ).setOrigin(0.5);
+    ).setOrigin(0.5).setDepth(1001);
     
     // 显示前10名分数
     for (let i = 0; i < Math.min(10, this.highScores.length); i++) {
@@ -1090,24 +1175,43 @@ showLeaderboard() {
             centerY - 150 + (i * 40), 
             `${i+1}. ${score.name}: ${score.score}`, 
             { fontSize: '24px', color: '#FFFFFF' }
-        ).setOrigin(0.5);
+        ).setOrigin(0.5).setDepth(1001);
     }
     
     // 返回按钮
     this.leaderboardElements.backBtn = this.add.rectangle(
-        centerX, centerY + 200, 200, 50, 0x556B2F
-    ).setInteractive();
+        centerX, centerY + 270, 200, 50, 0x556B2F
+    ).setInteractive().setDepth(1001);
     
     this.leaderboardElements.backText = this.add.text(
-        centerX, centerY + 200, '返回', 
+        centerX, centerY + 270, '返回', 
         { fontSize: '24px', color: '#FFFFFF' }
-    ).setOrigin(0.5);
+    ).setOrigin(0.5).setDepth(1001);
     
     this.leaderboardElements.backBtn.on('pointerdown', () => {
         this.cleanupLeaderboard();
-        this.endGame('');
+        // 重新启用排行榜按钮
+        this.leaderboardButton.setInteractive(true);
+        
+        // 重置标志位
+        this.isShowingLeaderboard = false;
+        
+        // 检查是否在游戏结束界面
+        if (isGameOverScreen) {
+            // 如果之前是游戏结束界面，显示结束界面元素
+            this.showGameOverScreen();
+        } else {
+            // 如果之前是游戏主界面，恢复游戏状态
+            this.isShrinking = this.wasShrinking;
+            
+            // 恢复游戏计时器
+            if (this.timerEvent) {
+                this.timerEvent.paused = false;
+            }
+        }
     });
 }
+
 
 loadHighScores() {
     if (typeof Storage !== 'undefined') {
