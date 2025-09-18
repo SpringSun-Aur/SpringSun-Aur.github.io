@@ -5,6 +5,13 @@ class BootScene extends Phaser.Scene {
         super({ key: 'BootScene' });
     }
 
+    preload() {
+        // 预加载军衔图片
+        for (let i = 0; i < 13; i++) {
+            this.load.image(`rank-${i}`, `image/${i}.png`);
+        }
+    }
+
     create() {
         console.log("BootScene is created!");
         this.scene.start('StandAtEaseScene');
@@ -702,15 +709,15 @@ cleanupGameOverScreen() {
     if (this.gameOverElements.titleText) this.gameOverElements.titleText.destroy();
     if (this.gameOverElements.scoreText) this.gameOverElements.scoreText.destroy();
     if (this.gameOverElements.nameInput) this.gameOverElements.nameInput.destroy();
-    if (this.gameOverElements.usernamePrompt) this.gameOverElements.usernamePrompt.destroy(); // 新增的提示文字
+    if (this.gameOverElements.usernamePrompt) this.gameOverElements.usernamePrompt.destroy();
     if (this.gameOverElements.submitBtn) this.gameOverElements.submitBtn.destroy();
     if (this.gameOverElements.submitText) this.gameOverElements.submitText.destroy();
     if (this.gameOverElements.leaderboardBtn) this.gameOverElements.leaderboardBtn.destroy();
     if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.destroy();
     if (this.gameOverElements.restartBtn) this.gameOverElements.restartBtn.destroy();
     if (this.gameOverElements.btnText) this.gameOverElements.btnText.destroy();
+    if (this.gameOverElements.rankImage) this.gameOverElements.rankImage.destroy(); // 添加这一行
     if (this.gameOverdes.titleText) this.gameOverdes.titleText.destroy();
-    
     
     // 重置引用
     this.gameOverElements = {
@@ -718,15 +725,17 @@ cleanupGameOverScreen() {
         titleText: null,
         scoreText: null,
         nameInput: null,
-        usernamePrompt: null, // 新增的提示文字引用
+        usernamePrompt: null,
         submitBtn: null,
         submitText: null,
         leaderboardBtn: null,
         leaderboardText: null,
         restartBtn: null,
-        btnText: null
+        btnText: null,
+        rankImage: null // 添加这一行
     };
-    this.gameOverdes= {
+    
+    this.gameOverdes = {
         bg: null,
         titleText: null,
         scoreText: null,
@@ -790,10 +799,25 @@ endGame(reason) {
         }
     ).setOrigin(0.5).setDepth(1001);
 
+    // 在 endGame 方法中替换添加军衔图片的代码
+    // 添加军衔图片 - 在军衔描述上方
+    const rankIndex = Math.min(this.level - 1, 12); // 确保索引不超过12
+    this.gameOverElements.rankImage = this.add.image(
+        centerX, 
+        centerY - 500, 
+        `rank-${rankIndex}`
+    ).setDepth(1001);
+
+    // 根据需要调整图片大小
+    this.gameOverElements.rankImage.setScale(0.5); // 调整缩放比例
+    
+    // 注意：由于 Phaser 无法直接加载本地文件路径，我们需要预先加载图片资源
+    // 或者使用 base64 编码的图片数据
+    
     // 修改军衔描述显示，支持多行文本
     this.gameOverdes.titleText = this.add.text(
-        centerX, centerY - 240, 
-        this.wrapText(`${this.leveldesc[this.level-1]}`, 50), // 限制每行50个字符
+        centerX, centerY - 300, 
+        this.wrapText(`${this.leveldesc[this.level-1]}`, 50), // 位置调整以适应图片
         {
             fontSize: '24px',
             fontFamily: 'Arial',
@@ -807,7 +831,7 @@ endGame(reason) {
 
     // 创建得分显示
     this.gameOverElements.scoreText = this.add.text(
-        centerX, centerY - 30, 
+        centerX, centerY + 30, 
         `最终得分: ${this.currentScore}`, 
         {
             fontSize: '36px',
@@ -820,7 +844,7 @@ endGame(reason) {
     // 添加提示文字"请输入用户名"
     this.gameOverElements.usernamePrompt = this.add.text(
         centerX,
-        centerY + 10,
+        centerY + 80,
         '请输入用户名',
         {
             fontSize: Math.floor(16 * this.scaleRatio) + 'px',
@@ -832,7 +856,7 @@ endGame(reason) {
     // 用户名输入框 - 正确加载保存的用户名
     this.gameOverElements.nameInput = this.add.dom(
         centerX,
-        centerY + 30,
+        centerY + 100,
         'input',
         {
             type: 'text',
@@ -852,6 +876,17 @@ endGame(reason) {
             `
         }
     ).setDepth(1001);
+
+    // 在DOM元素创建后设置值
+    this.time.delayedCall(100, () => {
+        if (this.gameOverElements.nameInput && this.gameOverElements.nameInput.node) {
+            const inputElement = this.gameOverElements.nameInput.node;
+            // 只有当用户名不是默认值时才填充
+            if (this.playerName && this.playerName !== '匿名玩家') {
+                inputElement.value = this.playerName;
+            }
+        }
+    });
 
     // 在DOM元素创建后设置值
     this.time.delayedCall(100, () => {
@@ -896,7 +931,7 @@ endGame(reason) {
     // 提交按钮
     this.gameOverElements.submitBtn = this.add.rectangle(
         centerX, 
-        centerY + 30 + buttonSpacing, 
+        centerY + 100 + buttonSpacing, 
         200 * this.scaleRatio, 
         40 * this.scaleRatio, 
         0x4CAF50
@@ -905,7 +940,7 @@ endGame(reason) {
     .setDepth(1001);
     this.gameOverElements.submitText = this.add.text(
         centerX, 
-        centerY + 30 + buttonSpacing, 
+        centerY + 100 + buttonSpacing, 
         '提交分数', 
         { 
             fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
@@ -919,7 +954,7 @@ endGame(reason) {
     // 排行榜按钮
     this.gameOverElements.leaderboardBtn = this.add.rectangle(
         centerX, 
-        centerY + 30 + buttonSpacing * 2, 
+        centerY + 100 + buttonSpacing * 2, 
         200 * this.scaleRatio, 
         40 * this.scaleRatio, 
         0x2196F3
@@ -929,7 +964,7 @@ endGame(reason) {
 
     this.gameOverElements.leaderboardText = this.add.text(
         centerX, 
-        centerY + 30 + buttonSpacing * 2, 
+        centerY + 100 + buttonSpacing * 2, 
         '查看排行榜', 
         { 
             fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
@@ -940,7 +975,7 @@ endGame(reason) {
     // 重新训练按钮
     this.gameOverElements.restartBtn = this.add.rectangle(
         centerX, 
-        centerY + 30 + buttonSpacing * 3, 
+        centerY + 100 + buttonSpacing * 3, 
         200 * this.scaleRatio, 
         40 * this.scaleRatio, 
         0x556B2F
@@ -950,7 +985,7 @@ endGame(reason) {
 
     this.gameOverElements.btnText = this.add.text(
         centerX, 
-        centerY + 30 + buttonSpacing * 3, 
+        centerY + 100 + buttonSpacing * 3, 
         '重新训练', 
         { 
             fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
