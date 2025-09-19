@@ -9,6 +9,8 @@ class ShootingGame extends Phaser.Scene {
         this.timerEvent = null; // 用于存储计时器事件
         this.gameEndTimer = null; // 用于存储游戏结束定时器
         this.isMobile = this.checkMobileDevice(); // 检测是否为移动设备
+        this.highScore = 0; // 最高分
+        this.loadHighScore(); // 加载最高分
     }
 
     // 检测是否为移动设备
@@ -16,9 +18,25 @@ class ShootingGame extends Phaser.Scene {
         return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|BlackBerry|WebOS|Mobile/i.test(navigator.userAgent);
     }
 
+    // 加载最高分
+    loadHighScore() {
+        const savedHighScore = localStorage.getItem('militaryShootingHighScore');
+        if (savedHighScore) {
+            this.highScore = parseInt(savedHighScore);
+        }
+    }
+
+    // 保存最高分
+    saveHighScore() {
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('militaryShootingHighScore', this.highScore.toString());
+        }
+    }
+
     preload() {
         // 根据设备类型创建不同大小的标靶
-        const targetSize = this.isMobile ? 150 : 150;
+        const targetSize = this.isMobile ? 200 : 150;
         
         const targetGraphic = this.make.graphics({ x: 0, y: 0, width: targetSize, height: targetSize });
         targetGraphic.fillStyle(0xff6666);
@@ -54,8 +72,11 @@ class ShootingGame extends Phaser.Scene {
             
             // 如果没有击中目标，则扣分
             if (!hit) {
-                this.score = Math.max(0, this.score - 250); // 扣250分，但不低于0分
+                this.score = Math.max(0, this.score - 250); 
                 this.updateScore();
+                
+                // 播放未命中音效
+                this.playMissSound();
                 
                 // 显示扣分动画
                 const penaltyText = this.add.text(pointer.x, pointer.y, '-250', {
@@ -76,6 +97,54 @@ class ShootingGame extends Phaser.Scene {
         });
     }
 
+    // 播放命中音效
+    playHitSound() {
+        try {
+            // 直接使用Web Audio API创建和播放声音
+            const context = this.sound.context;
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 440; // 高音调
+            gainNode.gain.value = 7.0; // 音量
+            
+            oscillator.start();
+            // 淡出效果
+            gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2);
+            oscillator.stop(context.currentTime + 0.2);
+        } catch (e) {
+            console.log("无法播放命中音效:", e);
+        }
+    }
+
+    // 播放未命中音效
+    playMissSound() {
+        try {
+            // 直接使用Web Audio API创建和播放声音
+            const context = this.sound.context;
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 220; // 低音调
+            gainNode.gain.value = 7.0; // 音量
+            
+            oscillator.start();
+            // 淡出效果
+            gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.3);
+            oscillator.stop(context.currentTime + 0.3);
+        } catch (e) {
+            console.log("无法播放未命中音效:", e);
+        }
+    }
+
     initUI() {
         // 初始化UI元素
         this.scoreDisplay = document.getElementById('score-display');
@@ -83,6 +152,7 @@ class ShootingGame extends Phaser.Scene {
         this.startScreen = document.getElementById('start-screen');
         this.gameOverScreen = document.getElementById('game-over-screen');
         this.finalScoreDisplay = document.getElementById('final-score');
+        this.highScoreDisplay = document.getElementById('high-score');
         this.startButton = document.getElementById('start-button');
         this.restartButton = document.getElementById('restart-button');
         
@@ -99,6 +169,11 @@ class ShootingGame extends Phaser.Scene {
                 e.stopPropagation();
                 this.restartGame();
             });
+        }
+        
+        // 初始化时显示最高分
+        if (this.highScoreDisplay) {
+            this.highScoreDisplay.textContent = `最高分: ${this.highScore}`;
         }
     }
 
@@ -259,6 +334,9 @@ class ShootingGame extends Phaser.Scene {
             this.score += points;
             this.updateScore();
             
+            // 播放命中音效
+            this.playHitSound();
+            
             // 显示得分动画
             const scoreText = this.add.text(hitTarget.x, hitTarget.y, `+${points}`, {
                 fontSize: '24px',
@@ -307,6 +385,9 @@ class ShootingGame extends Phaser.Scene {
     endGame() {
         this.gameActive = false;
         
+        // 保存最高分
+        this.saveHighScore();
+        
         // 清除计时器
         if (this.timerEvent) {
             this.timerEvent.remove(false);
@@ -321,6 +402,16 @@ class ShootingGame extends Phaser.Scene {
         if (this.finalScoreDisplay) {
             this.finalScoreDisplay.textContent = `得分: ${this.score}`;
         }
+        
+        // 更新最高分显示
+        if (this.highScoreDisplay) {
+            // 检查是否创造了新纪录
+            if (this.score > this.highScore) {
+                this.highScore = this.score;
+            }
+            this.highScoreDisplay.textContent = `最高分: ${this.highScore}`;
+        }
+        
         if (this.gameOverScreen) {
             this.gameOverScreen.style.display = 'flex';
         }
@@ -352,6 +443,9 @@ const config = {
         pixelArt: false,
         antiAlias: true,
         roundPixels: true
+    },
+    audio: {
+        disableWebAudio: false
     }
 };
 
