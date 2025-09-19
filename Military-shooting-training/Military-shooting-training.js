@@ -186,29 +186,19 @@ class ShootingGame extends Phaser.Scene {
             this.lastTargetTime = time;
         }
         
-        // 更新标靶位置
-        this.targets.children.each(target => {
-            // 随机移动标靶
-            target.x += target.vx * (delta / 1000);
-            target.y += target.vy * (delta / 1000);
-            
-            // 检查标靶是否已经离开屏幕，如果是则移除
-            if (this.isTargetOffScreen(target)) {
-                target.destroy();
-            }
-        });
+        // 移除移动标靶的代码，标靶现在是静止的
     }
 
     // 检查标靶是否已经离开屏幕
-    isTargetOffScreen(target) {
-        const buffer = 100; // 缓冲区，确保标靶完全离开屏幕
-        return (
-            target.x < -buffer || 
-            target.x > this.game.config.width + buffer || 
-            target.y < -buffer || 
-            target.y > this.game.config.height + buffer
-        );
-    }
+    // isTargetOffScreen(target) {
+    //     const buffer = 100; // 缓冲区，确保标靶完全离开屏幕
+    //     return (
+    //         target.x < -buffer || 
+    //         target.x > this.game.config.width + buffer || 
+    //         target.y < -buffer || 
+    //         target.y > this.game.config.height + buffer
+    //     );
+    // }
 
     startGame() {
         if (this.startScreen) {
@@ -253,56 +243,46 @@ class ShootingGame extends Phaser.Scene {
     }
 
     createTarget() {
-        // 随机选择一个边出现标靶
-        const side = Phaser.Math.Between(0, 3); // 0: top, 1: right, 2: bottom, 3: left
-        let x, y, vx, vy;
+        // 在屏幕随机位置生成标靶
+        const targetSize = this.isMobile ? 100 : 75;
         
-        // 更高的速度范围
-        const speed = Phaser.Math.Between(200, 400); // 速度范围从200-400
-        
-        // 根据设备类型调整生成位置范围
-        const horizontalRange = this.isMobile ? 
-            [this.game.config.width * 0.1, this.game.config.width * 0.9] : 
-            [this.game.config.width * 0.2, this.game.config.width * 0.8];
-            
-        const verticalRange = this.isMobile ? 
-            [this.game.config.height * 0.1, this.game.config.height * 0.9] : 
-            [this.game.config.height * 0.2, this.game.config.height * 0.8];
-        
-        const targetSize = this.isMobile ? 100 : 75; // 标靶半径
-        
-        switch (side) {
-            case 0: // 从顶部出现（更靠近中间区域）
-                x = Phaser.Math.Between(horizontalRange[0], horizontalRange[1]);
-                y = -targetSize;
-                vx = Phaser.Math.Between(-speed, speed);
-                vy = Phaser.Math.Between(speed/2, speed);
-                break;
-            case 1: // 从右侧出现（更靠近中间区域）
-                x = this.game.config.width + targetSize;
-                y = Phaser.Math.Between(verticalRange[0], verticalRange[1]);
-                vx = Phaser.Math.Between(-speed, -speed/2);
-                vy = Phaser.Math.Between(-speed, speed);
-                break;
-            case 2: // 从底部出现（更靠近中间区域）
-                x = Phaser.Math.Between(horizontalRange[0], horizontalRange[1]);
-                y = this.game.config.height + targetSize;
-                vx = Phaser.Math.Between(-speed, speed);
-                vy = Phaser.Math.Between(-speed, -speed/2);
-                break;
-            case 3: // 从左侧出现（更靠近中间区域）
-                x = -targetSize;
-                y = Phaser.Math.Between(verticalRange[0], verticalRange[1]);
-                vx = Phaser.Math.Between(speed/2, speed);
-                vy = Phaser.Math.Between(-speed, speed);
-                break;
-        }
+        // 确保标靶完全在屏幕内
+        const x = Phaser.Math.Between(targetSize, this.game.config.width - targetSize);
+        const y = Phaser.Math.Between(targetSize, this.game.config.height - targetSize);
         
         const target = this.add.sprite(x, y, 'target');
         target.setScale(0.7);
-        target.vx = vx;
-        target.vy = vy;
         target.creationTime = this.time.now;
+        
+        // 设置标靶的生命周期为3秒
+        const lifetime = 3000;
+        
+        // 在标靶生命周期的最后1秒开始闪烁
+        this.time.delayedCall(lifetime - 1000, () => {
+            if (target.active) {
+                // 添加闪烁效果
+                this.tweens.add({
+                    targets: target,
+                    alpha: 0,
+                    duration: 200,
+                    yoyo: true,
+                    repeat: 2,
+                    onComplete: () => {
+                        if (target.active) {
+                            target.alpha = 1;
+                        }
+                    }
+                });
+            }
+        }, [], this);
+        
+        // 生命周期结束后自动销毁
+        this.time.delayedCall(lifetime, () => {
+            if (target.active) {
+                target.destroy();
+            }
+        }, [], this);
+        
         this.targets.add(target);
     }
 
