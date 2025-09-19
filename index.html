@@ -234,28 +234,29 @@
         <div class="games-grid">
             <div class="game-card" data-url="Military-training-expert">
                 <div class="game-icon">🎯</div>
-                <div class="game-title">军训达人</div>
+                <div class="game-title">专注，一击必中！</div>
                 <div class="game-description">通过精准点击训练你的反应力和专注力，体验军人的精准执行力！</div>
                 <button class="play-button">开始游戏</button>
             </div>
+
             <div class="game-card" data-url="https://example.com/game2">
                 <div class="game-icon">🏃</div>
-                <div class="game-title">障碍跑(敬请期待)</div>
+                <div class="game-title">腾越，履险如夷！(敬请期待)</div>
                 <div class="game-description">模拟军事障碍训练，考验你的速度和灵活性！</div>
                 <button class="play-button">开始游戏</button>
             </div>
             
             <div class="game-card" data-url="Military-shooting-training">
                 <div class="game-icon">🔫</div>
-                <div class="game-title">射击训练(制作中)</div>
+                <div class="game-title">凝心，弹无虚发！(制作中)</div>
                 <div class="game-description">精准射击训练，提升你的瞄准能力和稳定性！</div>
                 <button class="play-button">开始游戏</button>
             </div>
             
-            <div class="game-card" data-url="https://example.com/game4">
+            <div class="game-card" data-url="Military-promotion">
                 <div class="game-icon">🧠</div>
-                <div class="game-title">军事知识(敬请期待)</div>
-                <div class="game-description">军事知识问答，检验你的军事理论水平！</div>
+                <div class="game-title">升变，士皆可帅！(敬请期待)</div>
+                <div class="game-description">模拟军阶进阶的策略训练，提高你的规划能力和战术思维！</div>
                 <button class="play-button">开始游戏</button>
             </div>
         </div>
@@ -341,7 +342,21 @@
                     setTimeout(function() {
                         gameContainer.innerHTML = '<iframe src="/Military-shooting-training" style="width:100%;height:100%;border:none;" scrolling="no"></iframe>';
                     }, 500);
-                } else {
+                }  else if (url === 'Military-promotion') {
+                    // 隐藏主菜单，显示游戏容器
+                    mainMenu.style.display = 'none';
+                    gameContainer.style.display = 'flex';
+                    backButton.style.display = 'flex';
+                    
+                    // 显示加载指示器
+                    gameContainer.innerHTML = '<div class="loading">游戏加载中...</div>';
+                    
+                    // 使用iframe加载游戏页面
+                    setTimeout(function() {
+                        gameContainer.innerHTML = '<iframe src="/Military-promotion" style="width:100%;height:100%;border:none;" scrolling="no"></iframe>';
+                    }, 500);
+                } 
+                else {
                     // 如果是外部链接，直接跳转
                     window.open(url, '_blank');
                 }
