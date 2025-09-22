@@ -114,7 +114,7 @@ constructor() {
     
     // 游戏状态
     this.isMobile = false;
-    this.scaleRatio = 1;
+    this.scaleRatio = Math.min(window.innerWidth / 1000, window.innerHeight / 800) * 0.9;
     this.gameTimer = 60;
     this.timerEvent = null;
     
@@ -499,7 +499,7 @@ onPointerDown(pointer) {
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
-        this.combo-=2;
+        this.combo/=3;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -598,7 +598,7 @@ resetGame() {
     this.lives = 3;
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
-    this.scaleRatio = 1;
+    this.scaleRatio = Math.min(window.innerWidth / 1000, window.innerHeight / 800) * 0.9;
     this.targetCircle.setRadius(150 * this.scaleRatio);
     
     // 添加提交状态标志
