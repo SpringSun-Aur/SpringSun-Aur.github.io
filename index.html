@@ -239,9 +239,9 @@
                 <button class="play-button">开始游戏</button>
             </div>
 
-            <div class="game-card" data-url="https://example.com/game2">
+            <div class="game-card" data-url="Military-racing-training">
                 <div class="game-icon">🏃</div>
-                <div class="game-title">腾越，履险如夷！(敬请期待)</div>
+                <div class="game-title">腾越，履险如夷！(制作中)</div>
                 <div class="game-description">模拟军事障碍训练，考验你的速度和灵活性！</div>
                 <button class="play-button">开始游戏</button>
             </div>
@@ -254,8 +254,8 @@
             </div>
             
             <div class="game-card" data-url="Military-promotion">
-                <div class="game-icon">🧠</div>
-                <div class="game-title">升变，士皆可帅！(敬请期待)</div>
+                <div class="game-icon">♟️</div>
+                <div class="game-title">升变，士皆可帅！(制作中)</div>
                 <div class="game-description">模拟军阶进阶的策略训练，提高你的规划能力和战术思维！</div>
                 <button class="play-button">开始游戏</button>
             </div>
@@ -354,6 +354,19 @@
                     // 使用iframe加载游戏页面
                     setTimeout(function() {
                         gameContainer.innerHTML = '<iframe src="/Military-promotion" style="width:100%;height:100%;border:none;" scrolling="no"></iframe>';
+                    }, 500);
+                }  else if (url === 'Military-racing-training') {
+                    // 隐藏主菜单，显示游戏容器
+                    mainMenu.style.display = 'none';
+                    gameContainer.style.display = 'flex';
+                    backButton.style.display = 'flex';
+                    
+                    // 显示加载指示器
+                    gameContainer.innerHTML = '<div class="loading">游戏加载中...</div>';
+                    
+                    // 使用iframe加载游戏页面
+                    setTimeout(function() {
+                        gameContainer.innerHTML = '<iframe src="/Military-racing-training" style="width:100%;height:100%;border:none;" scrolling="no"></iframe>';
                     }, 500);
                 } 
                 else {
