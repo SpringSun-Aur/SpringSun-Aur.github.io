@@ -120,10 +120,6 @@ constructor() {
     
     // 音效
     this.sounds = {};
-    
-    // 后端接口基础地址（可根据部署修改）。
-    // 若页面与 PHP 在同域同目录，可留空字符串表示相对路径。
-    this.apiBaseUrl = this.apiBaseUrl || '';
 }
 init() {
     this.isMobile = this.sys.game.device.os.android || 
@@ -136,8 +132,6 @@ create() {
     this.createTopInfoBar();
     // 加载资源
     this.getHighScoreFromStorage();
-    // 尝试从服务器加载排行榜（失败回退本地）
-    this.loadHighScoresFromServer();
     
     // 初始化音频
     this.sounds.click = this.sound.add('click');
@@ -554,7 +548,7 @@ onPointerDown(pointer) {
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
-        this.combo-=2;
+        this.combo/=3;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -1234,11 +1228,8 @@ showLeaderboard() {
     // 隐藏游戏结束界面
     this.hideGameOverScreen();
     
-    // 加载排行榜数据（优先服务器，失败本地）
-    this.loadHighScoresFromServer(() => {
-        // 服务器失败时回退本地
-        this.loadHighScores();
-    });
+    // 加载排行榜数据
+    this.loadHighScores();
     
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
@@ -1294,46 +1285,6 @@ showLeaderboard() {
         this.isShowingLeaderboard = false;
     });
 }
-// 从服务器加载排行榜数据（带本地回退）
-loadHighScoresFromServer(fallback) {
-    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
-    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
-    fetch(url, { method: 'GET' })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            this.highScores = (data && Array.isArray(data.scores)) ? data.scores : [];
-            this.highScores.sort((a, b) => b.score - a.score);
-        })
-        .catch(error => {
-            console.error('加载排行榜数据失败:', error);
-            if (typeof fallback === 'function') {
-                fallback();
-            } else {
-                this.loadHighScores();
-            }
-        });
-}
-
-// 保存分数到服务器
-saveHighScoreToServer(entry) {
-    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
-    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
-    return fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    });
-}
 loadHighScores() {
     if (typeof Storage !== 'undefined') {
         const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
@@ -1341,32 +1292,26 @@ loadHighScores() {
             this.highScores = JSON.parse(savedScores);
         }
     }
-    // 本地排序作为兜底
+    
+    // 按分数降序排序
     this.highScores.sort((a, b) => b.score - a.score);
 }
 
 saveHighScore() {
-    const entry = {
+    // 添加当前分数到排行榜
+    this.highScores.push({
         name: this.playerName,
         score: this.currentScore,
         date: new Date().toISOString()
-    };
-    // 先写到服务器，失败再回退到本地
-    this.saveHighScoreToServer(entry)
-        .then(() => {
-            // 成功后刷新排行榜
-            this.loadHighScoresFromServer();
-        })
-        .catch(() => {
-            // 服务器失败则写入本地
-            this.highScores.push(entry);
-            if (typeof Storage !== 'undefined') {
-                localStorage.setItem(
-                    'militaryTrainingLeaderboard', 
-                    JSON.stringify(this.highScores)
-                );
-            }
-        });
+    });
+    
+    // 保存到本地存储
+    if (typeof Storage !== 'undefined') {
+        localStorage.setItem(
+            'militaryTrainingLeaderboard', 
+            JSON.stringify(this.highScores)
+        );
+    }
 }
 
 cleanupLeaderboard() {

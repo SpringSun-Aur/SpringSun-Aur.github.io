@@ -114,16 +114,15 @@ constructor() {
     
     // 游戏状态
     this.isMobile = false;
-    this.scaleRatio = 1;
+    this.scaleRatio = Math.min(window.innerWidth / 1000, window.innerHeight / 800) * 0.9;
     this.gameTimer = 60;
     this.timerEvent = null;
     
     // 音效
     this.sounds = {};
     
-    // 后端接口基础地址（可根据部署修改）。
-    // 若页面与 PHP 在同域同目录，可留空字符串表示相对路径。
-    this.apiBaseUrl = this.apiBaseUrl || '';
+    // 服务器API地址
+    this.apiBaseUrl = '/api'; // 相对路径，适用于同域部署
 }
 init() {
     this.isMobile = this.sys.game.device.os.android || 
@@ -136,8 +135,6 @@ create() {
     this.createTopInfoBar();
     // 加载资源
     this.getHighScoreFromStorage();
-    // 尝试从服务器加载排行榜（失败回退本地）
-    this.loadHighScoresFromServer();
     
     // 初始化音频
     this.sounds.click = this.sound.add('click');
@@ -502,7 +499,7 @@ onPointerDown(pointer) {
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
-        this.combo-=2;
+        this.combo/=3;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -601,7 +598,7 @@ resetGame() {
     this.lives = 3;
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
-    this.scaleRatio = 1;
+    this.scaleRatio = Math.min(window.innerWidth / 1000, window.innerHeight / 800) * 0.9;
     this.targetCircle.setRadius(150 * this.scaleRatio);
     
     // 添加提交状态标志
@@ -662,46 +659,43 @@ updateScore(points, quality, textColor, feedback) {
 
 // 修改 getHighScoreFromStorage 方法
 getHighScoreFromStorage() {
-    if (typeof Storage !== 'undefined') {
-        const savedHighScore = localStorage.getItem('militaryTrainingHighScore');
-        if (savedHighScore) {
-            this.highScore = parseInt(savedHighScore);
-        }
-        
-        // 同时加载排行榜数据
-        this.loadHighScores();
-    }
+    // 从服务器获取排行榜数据
+    this.loadHighScoresFromServer();
 }
 
-// 修改 saveHighScore 方法
-saveHighScore() {
-    if (typeof Storage !== 'undefined') {
-        // 保存最高分
-        if (this.currentScore > this.highScore) {
-            this.highScore = this.currentScore;
-            localStorage.setItem('militaryTrainingHighScore', this.highScore.toString());
-        }
-        
-        // 保存到排行榜
-        this.highScores.push({
-            name: this.playerName,
-            score: this.currentScore,
-            date: new Date().toISOString()
+// 从服务器加载排行榜数据
+loadHighScoresFromServer() {
+    fetch(`${this.apiBaseUrl}/leaderboard`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            this.highScores = data.scores || [];
+            // 按分数降序排序
+            this.highScores.sort((a, b) => b.score - a.score);
+        })
+        .catch(error => {
+            console.error('加载排行榜数据失败:', error);
+            // 如果服务器加载失败，使用本地存储作为后备
+            this.loadHighScoresFromLocalStorage();
         });
-        
-        // 只保留前100名
-        this.highScores.sort((a, b) => b.score - a.score);
-        if (this.highScores.length > 100) {
-            this.highScores = this.highScores.slice(0, 100);
-        }
-        
-        localStorage.setItem(
-            'militaryTrainingLeaderboard', 
-            JSON.stringify(this.highScores)
-        );
-    }
 }
 
+// 从本地存储加载排行榜数据（后备方案）
+loadHighScoresFromLocalStorage() {
+    if (typeof Storage !== 'undefined') {
+        const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
+        if (savedScores) {
+            this.highScores = JSON.parse(savedScores);
+        }
+    }
+    
+    // 按分数降序排序
+    this.highScores.sort((a, b) => b.score - a.score);
+}
 
 showFeedbackLevel(text, color) {
     if (!this.feedbackTextLevel) {
@@ -1079,8 +1073,7 @@ this.gameOverElements.submitBtn.on('pointerdown', () => {
         this.gameOverElements.submitText.setText('已提交').setColor('#666666');
         
         this.playerName = username; // 更新玩家名称变量
-        this.saveHighScore();
-        this.showLeaderboard();
+        this.saveHighScoreToServer(username, this.currentScore);
     }
 });
     
@@ -1156,10 +1149,8 @@ showLeaderboard() {
         }
     }
     
-    // 加载排行榜数据（优先服务器，失败本地）
-    this.loadHighScoresFromServer(() => {
-        this.loadHighScores();
-    });
+    // 加载排行榜数据
+    this.loadHighScores();
     
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
@@ -1222,39 +1213,61 @@ showLeaderboard() {
 
 
 loadHighScores() {
-    if (typeof Storage !== 'undefined') {
-        const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
-        if (savedScores) {
-            this.highScores = JSON.parse(savedScores);
-        }
-    }
-    
-    // 按分数降序排序
-    this.highScores.sort((a, b) => b.score - a.score);
+    // 优先从服务器加载排行榜数据
+    this.loadHighScoresFromServer();
 }
 
-saveHighScore() {
-    const entry = {
-        name: this.playerName,
-        score: this.currentScore,
+// 保存分数到服务器
+saveHighScoreToServer(name, score) {
+    const data = {
+        name: name,
+        score: score,
         date: new Date().toISOString()
     };
-    // 先写到服务器，失败再回退到本地
-    this.saveHighScoreToServer(entry)
-        .then(() => {
-            // 成功后刷新排行榜
-            this.loadHighScoresFromServer();
-        })
-        .catch(() => {
-            // 服务器失败则写入本地
-            this.highScores.push(entry);
-            if (typeof Storage !== 'undefined') {
-                localStorage.setItem(
-                    'militaryTrainingLeaderboard', 
-                    JSON.stringify(this.highScores)
-                );
-            }
-        });
+    
+    fetch(`${this.apiBaseUrl}/leaderboard`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('分数提交成功:', result);
+        // 提交成功后重新加载排行榜
+        this.loadHighScoresFromServer();
+        this.showLeaderboard();
+    })
+    .catch(error => {
+        console.error('提交分数失败:', error);
+        // 如果服务器提交失败，保存到本地存储作为后备
+        this.saveHighScoreToLocal(name, score);
+        this.showLeaderboard();
+    });
+}
+
+// 保存分数到本地存储（后备方案）
+saveHighScoreToLocal(name, score) {
+    // 添加当前分数到排行榜
+    this.highScores.push({
+        name: name,
+        score: score,
+        date: new Date().toISOString()
+    });
+    
+    // 保存到本地存储
+    if (typeof Storage !== 'undefined') {
+        localStorage.setItem(
+            'militaryTrainingLeaderboard', 
+            JSON.stringify(this.highScores)
+        );
+    }
 }
 
 cleanupLeaderboard() {
@@ -1272,47 +1285,6 @@ cleanupLeaderboard() {
     if (this.leaderboardElements.backText) this.leaderboardElements.backText.destroy();
     
     this.leaderboardElements = {};
-}
-
-// 从服务器加载排行榜数据（带本地回退）
-loadHighScoresFromServer(fallback) {
-    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
-    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
-    fetch(url, { method: 'GET' })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            this.highScores = (data && Array.isArray(data.scores)) ? data.scores : [];
-            this.highScores.sort((a, b) => b.score - a.score);
-        })
-        .catch(error => {
-            console.error('加载排行榜数据失败:', error);
-            if (typeof fallback === 'function') {
-                fallback();
-            } else {
-                this.loadHighScores();
-            }
-        });
-}
-
-// 保存分数到服务器
-saveHighScoreToServer(entry) {
-    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
-    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
-    return fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    });
 }
 
 
