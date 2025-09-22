@@ -42,10 +42,8 @@ constructor() {
         restartBtn: null,
         btnText: null
     };
-    
-    this.isShowingLeaderboard = false;
-    this.wasShrinking = false;
-
+     this.isShowingLeaderboard = false;
+     this.wasShrinking = false;
     this.LevelName=['预备兵','列兵','上等兵','军士','少尉','中尉','上尉','少校',
                     '中校','上校','少将','中将','上将'];
     this.leveldesc=[
@@ -80,6 +78,7 @@ constructor() {
         12400
     ];
 
+
     this.circle = null;
     this.isShrinking = false;
     this.shrinkSpeed = 10;
@@ -113,21 +112,23 @@ constructor() {
     this.isScoreSubmitted = false;
     
     // 游戏状态
-    this.isMobile = false;
-    this.scaleRatio = 1;
+    //this.isMobile = false;
+    //this.scaleRatio = 1;
     this.gameTimer = 60;
     this.timerEvent = null;
+    this.scaleRatio = Math.min(window.innerWidth / 9, window.innerHeight / 16) * 0.045;
     
     // 音效
     this.sounds = {};
     
-    // 服务器API地址
-    this.apiBaseUrl = '/api'; // 相对路径，适用于同域部署
+    // 后端接口基础地址（可根据部署修改）。
+    // 若页面与 PHP 在同域同目录，可留空字符串表示相对路径。
+    this.apiBaseUrl = this.apiBaseUrl || '';
 }
 init() {
     this.isMobile = this.sys.game.device.os.android || 
                    this.sys.game.device.os.iOS;
-    this.scaleRatio = Math.min(window.innerWidth / 1000, window.innerHeight / 800) * 0.9;
+    this.scaleRatio = Math.min(window.innerWidth / 9, window.innerHeight / 16) * 0.045;
 }
 
 create() {
@@ -135,6 +136,8 @@ create() {
     this.createTopInfoBar();
     // 加载资源
     this.getHighScoreFromStorage();
+    // 尝试从服务器加载排行榜（失败回退本地）
+    this.loadHighScoresFromServer();
     
     // 初始化音频
     this.sounds.click = this.sound.add('click');
@@ -146,7 +149,9 @@ create() {
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
     
+    
     // 创建主游戏元素
+    
     
     // 添加小圈作为目标
     this.initialSmallRadius = 150 * this.scaleRatio; // 存储初始半径
@@ -166,22 +171,20 @@ create() {
     // 显示开始提示
     this.showStartPrompt();
     
-    // 添加键盘支持
-    this.setupKeyboardControls();
-    
-    // 禁用鼠标点击全局事件
-    this.input.mouse.capture = true;
+    // 添加键盘支持（桌面端）
+    if (!this.isMobile) {
+        this.setupKeyboardControls();
+    }
 }
-
 updateUI() {
     const hearts = '❤️'.repeat(this.lives) + '♡'.repeat(3 - this.lives);
     if (this.playerNameText) {
         this.playerNameText.setText(`玩家: ${this.playerName}`);
     }
     this.levelText.setText(`⭐${this.LevelName[this.level-1]}`);
-    this.timerText.setText(`  ⏱${this.gameTimer}s`);
+    this.timerText.setText(`⏱${this.gameTimer}s`);
     this.currentScoreText.setText(`💯${this.currentScore}`);  
-    this.comboText.setText(`  🔥${this.combo}`);
+    this.comboText.setText(`🔥${this.combo}`);
     this.livesText.setText(hearts);
     
     // 连击数高亮
@@ -239,7 +242,7 @@ createTopInfoBar() {
     xPos += spacing;
     
     // 连击数
-    this.comboText = this.add.text(xPos, yPos, `  🔥${this.combo}`, { 
+    this.comboText = this.add.text(xPos, yPos, `🔥${this.combo}`, { 
         fontSize: Math.floor(22 * this.scaleRatio) + 'px',
         fill: '#9b59b6'
     }).setOrigin(0, 0.5);
@@ -253,7 +256,7 @@ createTopInfoBar() {
     }).setOrigin(0, 0.5);
     
     // 质量显示
-    this.qualityText = this.add.text(xPos + spacing, yPos, '准备...', { 
+    this.qualityText = this.add.text(xPos + spacing, yPos, '', { 
         fontSize: Math.floor(22 * this.scaleRatio) + 'px',
         fill: '#7f8c8d'
     }).setOrigin(0, 0.5);
@@ -314,8 +317,17 @@ createLivesDisplay() {
 }
 
 startGameTimer() {
+    // 如果游戏已经结束，不启动计时器
+    if (this.isGameOver) {
+        return;
+    }
+    
     if (!this.isTimerStarted) {
         this.isTimerStarted = true;
+        // 在创建新事件前先清理可能存在的旧事件
+        if (this.timerEvent) {
+            this.time.removeEvent(this.timerEvent);
+        }
         this.timerEvent = this.time.addEvent({
             delay: 1000,
             callback: this.updateTimer,
@@ -326,6 +338,11 @@ startGameTimer() {
 }
 
 updateTimer() {
+    // 添加检查确保游戏没有结束
+    if (this.isGameOver) {
+        return;
+    }
+    
     this.gameTimer--;
     this.timerText.setText(`  ⏱${this.gameTimer}s`);
     
@@ -333,7 +350,6 @@ updateTimer() {
         this.endGame('时间到！');
     }
 }
-
 levelUp() {
     this.level++;
     this.levelText.setText(`⭐${this.LevelName[this.level-1]}`).setColor('#e67e22');
@@ -359,7 +375,7 @@ showStartPrompt() {
     const centerX = this.cameras.main.width /2;
     const centerY = this.cameras.main.height / 2 + 150 * this.scaleRatio;
 
-    const startText = this.add.text(centerX, centerY, '🎯 按空格键开始训练！', { 
+    const startText = this.add.text(centerX, centerY, '🎯 点击屏幕开始训练！', { 
         fontSize: Math.floor(this.isMobile ? 36 : 40 * this.scaleRatio) + 'px', 
         fill: '#2c3e50',
         fontStyle: 'bold',
@@ -376,13 +392,11 @@ showStartPrompt() {
         repeat: -1
     });
 
-    // 修改为监听空格键而不是鼠标点击
-    const startKeyListener = this.input.keyboard.on('keydown-SPACE', () => {
+    this.input.once('pointerdown', () => {
         startText.destroy();
         this.startShrinking();
     });
 }
-
 setupKeyboardControls() {
     this.input.keyboard.on('keydown-SPACE', () => {
         // 如果正在显示排行榜，不处理空格键
@@ -392,19 +406,14 @@ setupKeyboardControls() {
         
         // 如果是第一次按键，启动计时器
         if (!this.isTimerStarted && !this.isGameOver) {
-            console.log('开始计时');
             this.startGameTimer();
         }
-
-        // 触发点击事件
-        else{
-            console.log('开始判断');
-            this.onPointerDown();
+        
+        if (this.isShrinking) {
+            this.onPointerDown({}, this.circle);
         }
     });
-}
-
-// 替换原有的 showComboFeedback 方法
+}// 替换原有的 showComboFeedback 方法
 showComboFeedback() {
     // 只在连击数大于等于3时显示
     if (this.combo >= 3) {
@@ -441,16 +450,62 @@ showComboFeedback() {
     }
 }
 
+missClick() {
+    // 添加游戏状态检查，防止在游戏结束后继续处理
+    if (this.isGameOver) {
+        return;
+    }
+    
+    this.lives--;
+    this.updateLivesDisplay();
+    this.combo = 0;
+    
+    console.log(`剩余生命:${this.lives}`); 
+    // 播放失败音效
+    if (this.sounds.fail) {
+        this.sounds.fail.play();
+    }
+    
+    if (this.comboText) {
+        this.comboText.setText('🔥0').setColor('#9b59b6');
+    }
+    
+    if (this.qualityText) {
+        this.qualityText.setText('偏离太远!').setColor('#e74c3c');
+    }
+    
+    this.showFeedback('点击偏离目标区域！-1生命', '#e74c3c');
+    
+    if (this.lives <= 0) {
+        this.endGame('训练失败！');
+    } else {
+        this.resetCircle();
+    }
+}
+
+// 修改 onPointerDown 方法，在开头添加额外的检查
 onPointerDown(pointer) {
     // 如果正在显示排行榜，不处理点击事件
     if (this.isShowingLeaderboard) {
         return;
     }
     
+    // 添加更多检查以防止重复触发
     if (!this.isTimerStarted && !this.isGameOver) {
         this.startGameTimer();
     }
-    if (this.isGameOver || !this.isShrinking) return;
+    
+    // 如果游戏已结束或圆圈未收缩，直接返回
+    if (this.isGameOver || !this.isShrinking) {
+        return;
+    }
+    
+    // 额外检查确保不会在游戏结束后处理点击
+    if (this.isGameOver) {
+        // 清理所有可能的事件监听器
+        this.input.off('pointerdown', this.onPointerDown, this);
+        return;
+    }
     
     // 计算当前大圆和小圆的半径比例
     const currentBigRadius = this.circle.radius * this.circle.scaleX;
@@ -486,7 +541,7 @@ onPointerDown(pointer) {
         textColor = '#f39c12';
         feedback = '不错，接近完美时机！';
         if(this.combo%2)this.combo=(this.combo-1)/2;
-        else this.combo/=2;
+        else this.combo /= 2;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -499,7 +554,7 @@ onPointerDown(pointer) {
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
-        this.combo-=2;
+        this.combo /= 3;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -524,15 +579,12 @@ onPointerDown(pointer) {
 
 startShrinking() {
     this.isShrinking = true;
-    //this.input.on('pointerdown', this.onPointerDown, this);
+    // 在绑定新事件前先解绑旧事件，防止重复绑定
+    this.input.off('pointerdown', this.onPointerDown, this);
+    this.input.on('pointerdown', this.onPointerDown, this);
 }
 
 update(time, delta) {
-    // 如果正在显示排行榜，不更新游戏逻辑
-    if (this.isShowingLeaderboard) {
-        return;
-    }
-    
     if (this.isShrinking && !this.isGameOver) {
         const scaleDelta = (this.shrinkSpeed / 1000) * (delta / 16.67);
         this.circle.scaleX -= scaleDelta;
@@ -544,6 +596,8 @@ update(time, delta) {
         }
     }
 }
+
+
 missClick() {
     this.lives--;
     this.updateLivesDisplay();
@@ -556,7 +610,7 @@ missClick() {
     }
     
     if (this.comboText) {
-        this.comboText.setText('  🔥0').setColor('#9b59b6');
+        this.comboText.setText('🔥0').setColor('#9b59b6');
     }
     
     if (this.qualityText) {
@@ -570,7 +624,9 @@ missClick() {
     } else {
         this.resetCircle();
     }
+    return;
 }
+
 
 
 resetCircle() {
@@ -585,31 +641,39 @@ updateLivesDisplay() {
     const hearts = '❤️'.repeat(this.lives) + '♡'.repeat(3 - this.lives);
     this.livesText.setText(hearts);
 }
-// 修改 resetGame 方法，确保重新激活提交按钮
+
 resetGame() {
     // 清理游戏结束界面
     this.cleanupGameOverScreen();
     
     // 重置游戏状态
     this.isGameOver = false;
+    this.isTimerStarted = false;
     this.currentScore = 0;
     this.combo = 0;
     this.level = 1;
     this.lives = 3;
     this.shrinkSpeed = 10;
     this.gameTimer = 60;
-    this.scaleRatio = 1;
     this.targetCircle.setRadius(150 * this.scaleRatio);
     
     // 添加提交状态标志
     this.isScoreSubmitted = false;
-    //this.isTimerStarted = false;
+    
+    // 彻底清理计时器
+    if (this.timerEvent) {
+        this.time.removeEvent(this.timerEvent);
+        this.timerEvent = null;
+    }
     
     // 重置UI显示
     this.updateUI();
     
     // 重置游戏元素
     this.resetCircle();
+    
+    // 清理所有可能的旧事件监听器
+    this.input.off('pointerdown', this.onPointerDown, this);
     
     // 重新绑定交互事件
     this.input.on('pointerdown', this.onPointerDown, this);
@@ -620,8 +684,6 @@ resetGame() {
     // 重新开始游戏
     this.startShrinking();
 }
-
-
 
 updateScore(points, quality, textColor, feedback) {
     this.currentScore += points;
@@ -641,7 +703,7 @@ updateScore(points, quality, textColor, feedback) {
         } else {
             this.comboText.setColor('#9b59b6');
         }
-        this.comboText.setText(`  🔥${this.combo}`);
+        this.comboText.setText(`🔥${this.combo}`);
     }
 
     if (this.highScoreText && this.currentScore > this.highScore) {
@@ -659,43 +721,46 @@ updateScore(points, quality, textColor, feedback) {
 
 // 修改 getHighScoreFromStorage 方法
 getHighScoreFromStorage() {
-    // 从服务器获取排行榜数据
-    this.loadHighScoresFromServer();
-}
-
-// 从服务器加载排行榜数据
-loadHighScoresFromServer() {
-    fetch(`${this.apiBaseUrl}/leaderboard`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            this.highScores = data.scores || [];
-            // 按分数降序排序
-            this.highScores.sort((a, b) => b.score - a.score);
-        })
-        .catch(error => {
-            console.error('加载排行榜数据失败:', error);
-            // 如果服务器加载失败，使用本地存储作为后备
-            this.loadHighScoresFromLocalStorage();
-        });
-}
-
-// 从本地存储加载排行榜数据（后备方案）
-loadHighScoresFromLocalStorage() {
     if (typeof Storage !== 'undefined') {
-        const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
-        if (savedScores) {
-            this.highScores = JSON.parse(savedScores);
+        const savedHighScore = localStorage.getItem('militaryTrainingHighScore');
+        if (savedHighScore) {
+            this.highScore = parseInt(savedHighScore);
         }
+        
+        // 同时加载排行榜数据
+        this.loadHighScores();
     }
-    
-    // 按分数降序排序
-    this.highScores.sort((a, b) => b.score - a.score);
 }
+
+// 修改 saveHighScore 方法
+saveHighScore() {
+    if (typeof Storage !== 'undefined') {
+        // 保存最高分
+        if (this.currentScore > this.highScore) {
+            this.highScore = this.currentScore;
+            localStorage.setItem('militaryTrainingHighScore', this.highScore.toString());
+        }
+        
+        // 保存到排行榜
+        this.highScores.push({
+            name: this.playerName,
+            score: this.currentScore,
+            date: new Date().toISOString()
+        });
+        
+        // 只保留前100名
+        this.highScores.sort((a, b) => b.score - a.score);
+        if (this.highScores.length > 100) {
+            this.highScores = this.highScores.slice(0, 100);
+        }
+        
+        localStorage.setItem(
+            'militaryTrainingLeaderboard', 
+            JSON.stringify(this.highScores)
+        );
+    }
+}
+
 
 showFeedbackLevel(text, color) {
     if (!this.feedbackTextLevel) {
@@ -744,11 +809,13 @@ showFeedback(text, color) {
     this.tweens.add({
         targets: this.feedbackText,
         alpha: 0,
-        duration: 2000,
+        duration: 3000,
         ease: 'Power2',
-        delay: 500 // 显示500ms后再开始淡出
+        delay: 1500 // 显示更久后再开始淡出
     });
 }
+
+
 
 
 resetCircle() {
@@ -761,11 +828,15 @@ resetCircle() {
 }
 
 resetTimer() {
+    // 清理旧的计时器事件
     if (this.timerEvent) {
         this.time.removeEvent(this.timerEvent);
+        this.timerEvent = null;
     }
     this.gameTimer = 60;
     this.timerText.setText(`  ⏱${this.gameTimer}s`);
+    
+    // 重新创建计时器事件
     this.timerEvent = this.time.addEvent({
         delay: 1000,
         callback: this.updateTimer,
@@ -827,23 +898,37 @@ wrapText(text, maxWidth) {
     return text;
 }
 
-// 修改 endGame 方法中的军衔描述显示部分
+// 修改 endGame 方法中的文字大小和位置
 endGame(reason) {
+    // 如果游戏已经结束，直接返回
+    if (this.isGameOver) {
+        return;
+    }
+
+    this.lives = 3;
     // 清理倒计时事件
-    this.lives=3;
     this.leaderboardButton.setInteractive(true);
 
+    // 确保彻底清理计时器
     if (this.timerEvent) {
         this.time.removeEvent(this.timerEvent);
         this.timerEvent = null;
     }
+    this.isTimerStarted = false;
     
     this.isGameOver = true;
     this.isShrinking = false;
     
-    this.circle.disableInteractive();
-    this.input.off('gameobjectdown', this.onPointerDown, this);
+    // 清理所有输入事件监听器
+    this.input.off('pointerdown', this.onPointerDown, this);
+    if (this.circle) {
+        this.circle.disableInteractive();
+    }
     
+    // 如果有键盘控制，也需要清理
+    if (this.input.keyboard) {
+        this.input.keyboard.off('keydown-SPACE');
+    }
     
     // 获取屏幕尺寸
     const screenWidth = this.cameras.main.width;
@@ -858,86 +943,90 @@ endGame(reason) {
         0x000000, 0.7
     ).setDepth(1000); // 设置高深度值确保在最上层
     
-    // 创建游戏结束标题
+    // 创建游戏结束标题（放大文字并上移）
     this.gameOverElements.titleText = this.add.text(
-        centerX, centerY - 70, 
-        `       训练结束\n当前军衔为: ${this.LevelName[this.level-1]}`, 
+        centerX, centerY - 150, 
+        `训练结束\n当前军衔为: ${this.LevelName[this.level-1]}`, 
         {
-            fontSize: '48px',
+            fontSize: '70px',
             fontFamily: 'Arial',
             color: '#FFD700',
             stroke: '#8B4513',
-            strokeThickness: 4
+            strokeThickness: 6,
+            align: 'center'
         }
     ).setOrigin(0.5).setDepth(1001);
 
     const rankIndex = Math.min(this.level - 1, 12); // 确保索引不超过12
+    // 上移军衔图片
     this.gameOverElements.rankImage = this.add.image(
         centerX, 
-        centerY - 320, 
+        centerY - 690, 
         `rank-${rankIndex}`
     ).setDepth(1001);
 
     // 根据需要调整图片大小
-    this.gameOverElements.rankImage.setScale(0.5); // 调整缩放比例
+    this.gameOverElements.rankImage.setScale(0.8); // 稍微增大图片
     
-    // 修改军衔描述显示，支持多行文本
+    // 修改军衔描述显示，支持多行文本（放大文字并上移）
     this.gameOverdes.titleText = this.add.text(
-        centerX, centerY - 210, 
-        this.wrapText(`${this.leveldesc[this.level-1]}`, 50), // 位置调整以适应图片
+        centerX, centerY - 450, 
+        `${this.leveldesc[this.level-1]}`, 
         {
-            fontSize: '24px',
+            fontSize: '48px',  // 增大字体
             fontFamily: 'Arial',
             color: '#000000',
             stroke: '#ffffff',
-            strokeThickness: 5,
+            strokeThickness: 6,
             align: 'center',
-            wordWrap: { width: 500, useAdvancedWrap: true }
+            wordWrap: { width: 700, useAdvancedWrap: true },  // 增加换行宽度
+            lineSpacing: 12  // 增加行间距
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 创建得分显示
+    // 创建得分显示（放大文字）
     this.gameOverElements.scoreText = this.add.text(
-        centerX, centerY + 30, 
+        centerX, centerY + 50, 
         `最终得分: ${this.currentScore}`, 
         {
-            fontSize: '36px',
-            color: '#4cd964'
+            fontSize: '52px',
+            color: '#4cd964',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
     
-  const buttonSpacing = 60 * this.scaleRatio;
+    const buttonSpacing = 75 * this.scaleRatio;
 
-    // 添加提示文字"请输入用户名"
+    // 添加提示文字"请输入用户名"（放大文字）
     this.gameOverElements.usernamePrompt = this.add.text(
         centerX,
-        centerY + 80,
+        centerY + 130,
         '请输入用户名',
         {
-            fontSize: Math.floor(16 * this.scaleRatio) + 'px',
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px',
             fill: '#7f8c8d',
             fontStyle: 'italic'
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 用户名输入框 - 正确加载保存的用户名（增大尺寸）
+    // 用户名输入框 - 正确加载保存的用户名（调整位置和大小）
     this.gameOverElements.nameInput = this.add.dom(
-        centerX,
-        centerY + 110,
+        centerX - 155,
+        centerY + 180,
         'input',
         {
             type: 'text',
             placeholder: '输入你的名字',
             value: '', // 初始为空
             style: `
-                width: ${300 * this.scaleRatio}px; 
-                height: ${20 * this.scaleRatio}px; 
+                width: ${570 * this.scaleRatio}px; 
+                height: ${30 * this.scaleRatio}px; 
                 font-size: ${16 * this.scaleRatio}px; 
                 text-align: center;
                 background-color: white;
                 border: 3px solid #3498db;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 8px;
                 color: #2c3e50;
                 outline: none;
             `
@@ -957,8 +1046,6 @@ endGame(reason) {
 
     // 强制显示输入框
     const inputElement = this.gameOverElements.nameInput.node;
-    console.log('Input value:', inputElement.value); // 检查值是否正确
-    console.log('Input style:', window.getComputedStyle(inputElement));
 
     // 确保输入框可见
     inputElement.style.zIndex = '1001';
@@ -972,41 +1059,44 @@ endGame(reason) {
 
     this.gameOverElements.nameInput.setInteractive();
     this.gameOverElements.nameInput.setScrollFactor(0);
+    
+    if (this.isMobile) {
+        this.gameOverElements.nameInput.node.style.fontSize = '40px';
+        this.gameOverElements.nameInput.node.style.height = '85px';
+    }
 
-    // 强制显示输入框
-    inputElement.style.border = '2px solid red'; // 添加明显边框便于调试
-    inputElement.style.zIndex = '1001';
-    inputElement.style.position = 'absolute';
-
-    // 提交按钮
+    // 提交按钮（放大按钮和文字）
     this.gameOverElements.submitBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 160 + buttonSpacing, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x4CAF50
     )
     .setInteractive()
     .setDepth(1001);
     this.gameOverElements.submitText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing, 
+        centerY + 160 + buttonSpacing, 
         '提交分数', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
+    
     if (this.isScoreSubmitted) {
         this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
         this.gameOverElements.submitText.setText('已提交');
     }
-    // 排行榜按钮
+    
+    // 排行榜按钮（放大按钮和文字）
     this.gameOverElements.leaderboardBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing * 2, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 160 + buttonSpacing * 2, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x2196F3
     )
     .setInteractive()
@@ -1014,20 +1104,21 @@ endGame(reason) {
 
     this.gameOverElements.leaderboardText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing * 2, 
+        centerY + 160 + buttonSpacing * 2, 
         '查看排行榜', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
 
-    // 重新训练按钮
+    // 重新训练按钮（放大按钮和文字）
     this.gameOverElements.restartBtn = this.add.rectangle(
         centerX, 
-        centerY + 100 + buttonSpacing * 3, 
-        200 * this.scaleRatio, 
-        40 * this.scaleRatio, 
+        centerY + 160 + buttonSpacing * 3, 
+        270 * this.scaleRatio, 
+        55 * this.scaleRatio, 
         0x556B2F
     )
     .setInteractive()
@@ -1035,47 +1126,51 @@ endGame(reason) {
 
     this.gameOverElements.btnText = this.add.text(
         centerX, 
-        centerY + 100 + buttonSpacing * 3, 
+        centerY + 160 + buttonSpacing * 3, 
         '重新训练', 
         { 
-            fontSize: Math.floor(20 * this.scaleRatio) + 'px', 
-            color: '#FFFFFF' 
+            fontSize: Math.floor(26 * this.scaleRatio) + 'px', 
+            color: '#FFFFFF',
+            fontStyle: 'bold'
         }
     ).setOrigin(0.5).setDepth(1001);
     
-  // 修改 endGame 方法中的提交按钮事件，添加用户名长度验证
-this.gameOverElements.submitBtn.on('pointerdown', () => {
-    // 检查是否已经提交过分数
-    if (this.isScoreSubmitted) {
-        return; // 如果已经提交过，直接返回
-    }
-    
-    const inputElement = this.gameOverElements.nameInput.node;
-    const username = inputElement.value.trim(); // 去除首尾空格
-    
-    // 验证用户名长度
-    if (username.length <= 0 || username.length > 15) {
-        // 显示错误提示在最前面
-        this.showFeedback('用户名长度不合理，需要1-15个字符之间', '#e74c3c');
-        // 确保反馈文本在最前面显示
-        if (this.feedbackText) {
-            this.feedbackText.setDepth(1002); // 设置更高的深度值确保在最前面
+    // 修改 endGame 方法中的提交按钮事件，添加用户名长度验证
+    this.gameOverElements.submitBtn.on('pointerdown', () => {
+        // 检查是否已经提交过分数
+        if (this.isScoreSubmitted) {
+            return; // 如果已经提交过，直接返回
         }
-        return;
-    }
-    
-    if (username) {
-        // 设置提交状态标志
-        this.isScoreSubmitted = true;
         
-        // 更改按钮外观以表示已提交
-        this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
-        this.gameOverElements.submitText.setText('已提交').setColor('#666666');
+        const inputElement = this.gameOverElements.nameInput.node;
+        const username = inputElement.value.trim(); // 去除首尾空格
         
-        this.playerName = username; // 更新玩家名称变量
-        this.saveHighScoreToServer(username, this.currentScore);
-    }
-});
+        // 验证用户名：必须为13位数字
+        if (!/^\d{13}$/.test(username)) {
+            // 显示错误提示在最前面
+            this.showFeedback('用户名必须为学号', '#e74c3c');
+            // 确保反馈文本在最前面显示
+            if (this.feedbackText) {
+                this.feedbackText.setDepth(1002); // 设置更高的深度值确保在最前面
+            }
+            return;
+        }
+        
+        if (username) {
+            // 设置提交状态标志
+            this.isScoreSubmitted = true;
+            
+            // 更改按钮外观以表示已提交
+            this.gameOverElements.submitBtn.setFillStyle(0xCCCCCC); // 更改按钮颜色为灰色
+            this.gameOverElements.submitText.setText('已提交').setColor('#666666');
+            
+            this.playerName = username; // 更新玩家名称变量
+            // 等待保存完成后再展示排行榜，确保看到最新一条
+            this.saveHighScore()
+                .catch(() => {})
+                .finally(() => this.showLeaderboard());
+        }
+    });
     
     this.gameOverElements.leaderboardBtn.on('pointerdown', () => {
         this.showLeaderboard();
@@ -1097,15 +1192,14 @@ hideGameOverScreen() {
     if (this.gameOverElements.submitBtn) this.gameOverElements.submitBtn.setVisible(false);
     if (this.gameOverElements.submitText) this.gameOverElements.submitText.setVisible(false);
     if (this.gameOverElements.leaderboardBtn) this.gameOverElements.leaderboardBtn.setVisible(false);
+    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(false);
     if (this.gameOverElements.restartBtn) this.gameOverElements.restartBtn.setVisible(false);
     if (this.gameOverElements.btnText) this.gameOverElements.btnText.setVisible(false);
     if (this.gameOverElements.rankImage) this.gameOverElements.rankImage.setVisible(false);
     if (this.gameOverdes.titleText) this.gameOverdes.titleText.setVisible(false);
-    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(false);
-
-    
 }
 
+// 添加 showGameOverScreen 方法
 showGameOverScreen() {
     // 显示游戏结束界面的所有元素
     if (this.gameOverElements.bg) this.gameOverElements.bg.setVisible(true);
@@ -1116,48 +1210,44 @@ showGameOverScreen() {
     if (this.gameOverElements.submitBtn) this.gameOverElements.submitBtn.setVisible(true);
     if (this.gameOverElements.submitText) this.gameOverElements.submitText.setVisible(true);
     if (this.gameOverElements.leaderboardBtn) this.gameOverElements.leaderboardBtn.setVisible(true);
+    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(true);
     if (this.gameOverElements.restartBtn) this.gameOverElements.restartBtn.setVisible(true);
     if (this.gameOverElements.btnText) this.gameOverElements.btnText.setVisible(true);
     if (this.gameOverElements.rankImage) this.gameOverElements.rankImage.setVisible(true);
     if (this.gameOverdes.titleText) this.gameOverdes.titleText.setVisible(true);
-    if (this.gameOverElements.leaderboardText) this.gameOverElements.leaderboardText.setVisible(true);
-    
 }
+// 修改 showLeaderboard 方法
 showLeaderboard() {
     // 禁用排行榜按钮防止重复点击
     this.leaderboardButton.disableInteractive();
     
+    // 暂停游戏计时器
+    if (this.timerEvent) {
+        this.timerEvent.paused = true;
+    }
+    
     // 设置标志位，表示正在显示排行榜
     this.isShowingLeaderboard = true;
     
-    // 检查是否在游戏结束界面
-    const isGameOverScreen = this.gameOverElements.bg !== null && this.gameOverElements.bg.active;
+    // 暂停圆圈动画
+    this.wasShrinking = this.isShrinking; // 保存当前收缩状态
+    this.isShrinking = false; // 暂停圆圈收缩
     
-    // 如果在游戏结束界面，隐藏结束界面元素
-    if (isGameOverScreen) {
-        this.hideGameOverScreen();
-    } else {
-        // 不在游戏结束界面时，保存当前游戏状态
-        this.wasShrinking = this.isShrinking;
-        
-        // 暂停游戏收缩动画
-        this.isShrinking = false;
-        
-        // 暂停游戏计时器
-        if (this.timerEvent) {
-            this.timerEvent.paused = true;
-        }
-    }
+    // 隐藏游戏结束界面
+    this.hideGameOverScreen();
     
-    // 加载排行榜数据
-    this.loadHighScores();
+    // 加载排行榜数据（优先服务器，失败本地）
+    this.loadHighScoresFromServer(() => {
+        // 服务器失败时回退本地
+        this.loadHighScores();
+    });
     
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
     
     // 创建排行榜背景
     this.leaderboardElements.bg = this.add.rectangle(
-        centerX, centerY, 600, 500, 0x000000, 0.8
+        centerX, centerY, 600, 560, 0x000000, 0.8
     ).setStrokeStyle(3, 0x8B4513).setDepth(1000);
     
     // 排行榜标题
@@ -1177,97 +1267,132 @@ showLeaderboard() {
         ).setOrigin(0.5).setDepth(1001);
     }
     
+    // 如果当前用户排名不在前十，追加显示其排名
+    if (typeof this.currentUserRankIndex === 'number' && this.currentUserRankIndex >= 10) {
+        const rankNum = this.currentUserRankIndex + 1;
+        const me = this.highScores[this.currentUserRankIndex];
+        if (me) {
+            this.leaderboardElements.currentUserRank = this.add.text(
+                centerX,
+                centerY + 270,
+                `我的排名：第${rankNum}名（${me.name}: ${me.score}）`,
+                { fontSize: '22px', color: '#FFD700' }
+            ).setOrigin(0.5).setDepth(1001);
+        }
+    }
+
     // 返回按钮
     this.leaderboardElements.backBtn = this.add.rectangle(
-        centerX, centerY + 270, 200, 50, 0x556B2F
+        centerX, centerY + 320, 200, 50, 0x556B2F
     ).setInteractive().setDepth(1001);
     
     this.leaderboardElements.backText = this.add.text(
-        centerX, centerY + 270, '返回', 
+        centerX, centerY + 320, '返回', 
         { fontSize: '24px', color: '#FFFFFF' }
     ).setOrigin(0.5).setDepth(1001);
     
     this.leaderboardElements.backBtn.on('pointerdown', () => {
         this.cleanupLeaderboard();
+        // 显示游戏结束界面
+        this.showGameOverScreen();
         // 重新启用排行榜按钮
         this.leaderboardButton.setInteractive(true);
         
+        // 恢复游戏计时器
+        if (this.timerEvent) {
+            this.timerEvent.paused = false;
+        }
+        
+        // 恢复圆圈动画
+        this.isShrinking = this.wasShrinking;
+        
         // 重置标志位
         this.isShowingLeaderboard = false;
-        
-        // 检查是否在游戏结束界面
-        if (isGameOverScreen) {
-            // 如果之前是游戏结束界面，显示结束界面元素
-            this.showGameOverScreen();
-        } else {
-            // 如果之前是游戏主界面，恢复游戏状态
-            this.isShrinking = this.wasShrinking;
-            
-            // 恢复游戏计时器
-            if (this.timerEvent) {
-                this.timerEvent.paused = false;
-            }
-        }
     });
 }
-
-
-loadHighScores() {
-    // 优先从服务器加载排行榜数据
-    this.loadHighScoresFromServer();
+// 从服务器加载排行榜数据（带本地回退）
+loadHighScoresFromServer(fallback) {
+    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
+    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
+    fetch(url, { method: 'GET' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            this.highScores = (data && Array.isArray(data.scores)) ? data.scores : [];
+            this.highScores.sort((a, b) => b.score - a.score);
+            // 计算当前用户排名（如果有最近提交）
+            this.currentUserRankIndex = -1;
+            if (this.lastSubmittedEntry && this.lastSubmittedEntry.name) {
+                const exactIdx = this.highScores.findIndex(s => s.name === this.lastSubmittedEntry.name && s.score === this.lastSubmittedEntry.score);
+                if (exactIdx >= 0) {
+                    this.currentUserRankIndex = exactIdx;
+                } else {
+                    const byNameIdx = this.highScores.findIndex(s => s.name === this.lastSubmittedEntry.name);
+                    this.currentUserRankIndex = byNameIdx;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('加载排行榜数据失败:', error);
+            if (typeof fallback === 'function') {
+                fallback();
+            } else {
+                this.loadHighScores();
+            }
+        });
 }
 
 // 保存分数到服务器
-saveHighScoreToServer(name, score) {
-    const data = {
-        name: name,
-        score: score,
-        date: new Date().toISOString()
-    };
-    
-    fetch(`${this.apiBaseUrl}/leaderboard`, {
+saveHighScoreToServer(entry) {
+    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
+    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
+    return fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+    }).then(response => {
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         return response.json();
-    })
-    .then(result => {
-        console.log('分数提交成功:', result);
-        // 提交成功后重新加载排行榜
-        this.loadHighScoresFromServer();
-        this.showLeaderboard();
-    })
-    .catch(error => {
-        console.error('提交分数失败:', error);
-        // 如果服务器提交失败，保存到本地存储作为后备
-        this.saveHighScoreToLocal(name, score);
-        this.showLeaderboard();
     });
 }
-
-// 保存分数到本地存储（后备方案）
-saveHighScoreToLocal(name, score) {
-    // 添加当前分数到排行榜
-    this.highScores.push({
-        name: name,
-        score: score,
-        date: new Date().toISOString()
-    });
-    
-    // 保存到本地存储
+loadHighScores() {
     if (typeof Storage !== 'undefined') {
-        localStorage.setItem(
-            'militaryTrainingLeaderboard', 
-            JSON.stringify(this.highScores)
-        );
+        const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
+        if (savedScores) {
+            this.highScores = JSON.parse(savedScores);
+        }
     }
+    // 本地排序作为兜底
+    this.highScores.sort((a, b) => b.score - a.score);
+}
+
+saveHighScore() {
+    const entry = {
+        name: this.playerName,
+        score: this.currentScore,
+        date: new Date().toISOString()
+    };
+    // 记录最近一次提交，便于展示个人排名
+    this.lastSubmittedEntry = entry;
+    // 先写到服务器，失败再回退到本地
+    return this.saveHighScoreToServer(entry)
+        .then(() => this.loadHighScoresFromServer())
+        .catch(() => {
+            // 服务器失败则写入本地
+            this.highScores.push(entry);
+            if (typeof Storage !== 'undefined') {
+                localStorage.setItem(
+                    'militaryTrainingLeaderboard', 
+                    JSON.stringify(this.highScores)
+                );
+            }
+        });
 }
 
 cleanupLeaderboard() {
@@ -1281,12 +1406,15 @@ cleanupLeaderboard() {
         }
     }
     
+    if (this.leaderboardElements.currentUserRank) {
+        this.leaderboardElements.currentUserRank.destroy();
+    }
+
     if (this.leaderboardElements.backBtn) this.leaderboardElements.backBtn.destroy();
     if (this.leaderboardElements.backText) this.leaderboardElements.backText.destroy();
     
     this.leaderboardElements = {};
 }
-
 
 }
 
@@ -1312,8 +1440,8 @@ const config = {
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 1000,
-        height: 750
+        width: 1200,
+        height: 1600
     }
 };
 
