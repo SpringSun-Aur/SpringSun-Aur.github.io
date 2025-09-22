@@ -120,6 +120,10 @@ constructor() {
     
     // 音效
     this.sounds = {};
+    
+    // 后端接口基础地址（可根据部署修改）。
+    // 若页面与 PHP 在同域同目录，可留空字符串表示相对路径。
+    this.apiBaseUrl = this.apiBaseUrl || '';
 }
 init() {
     this.isMobile = this.sys.game.device.os.android || 
@@ -132,6 +136,8 @@ create() {
     this.createTopInfoBar();
     // 加载资源
     this.getHighScoreFromStorage();
+    // 尝试从服务器加载排行榜（失败回退本地）
+    this.loadHighScoresFromServer();
     
     // 初始化音频
     this.sounds.click = this.sound.add('click');
@@ -535,7 +541,7 @@ onPointerDown(pointer) {
         textColor = '#f39c12';
         feedback = '不错，接近完美时机！';
         if(this.combo%2)this.combo=(this.combo-1)/2;
-        else this.combo/=2;
+        else this.combo /= 2;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -548,7 +554,7 @@ onPointerDown(pointer) {
         quality = '普通';
         textColor = '#3498db';
         feedback = '时机把握还需练习！';
-        this.combo/=3;
+        this.combo /= 3;
         
         // 播放普通点击音效
         if (this.sounds.click) {
@@ -803,9 +809,9 @@ showFeedback(text, color) {
     this.tweens.add({
         targets: this.feedbackText,
         alpha: 0,
-        duration: 2000,
+        duration: 3000,
         ease: 'Power2',
-        delay: 500 // 显示500ms后再开始淡出
+        delay: 1500 // 显示更久后再开始淡出
     });
 }
 
@@ -1139,10 +1145,10 @@ endGame(reason) {
         const inputElement = this.gameOverElements.nameInput.node;
         const username = inputElement.value.trim(); // 去除首尾空格
         
-        // 验证用户名长度
-        if (username.length <= 0 || username.length > 15) {
+        // 验证用户名：必须为13位数字
+        if (!/^\d{13}$/.test(username)) {
             // 显示错误提示在最前面
-            this.showFeedback('用户名长度不合理，需要1-15个字符之间', '#e74c3c');
+            this.showFeedback('用户名必须为学号', '#e74c3c');
             // 确保反馈文本在最前面显示
             if (this.feedbackText) {
                 this.feedbackText.setDepth(1002); // 设置更高的深度值确保在最前面
@@ -1159,8 +1165,10 @@ endGame(reason) {
             this.gameOverElements.submitText.setText('已提交').setColor('#666666');
             
             this.playerName = username; // 更新玩家名称变量
-            this.saveHighScore();
-            this.showLeaderboard();
+            // 等待保存完成后再展示排行榜，确保看到最新一条
+            this.saveHighScore()
+                .catch(() => {})
+                .finally(() => this.showLeaderboard());
         }
     });
     
@@ -1228,15 +1236,18 @@ showLeaderboard() {
     // 隐藏游戏结束界面
     this.hideGameOverScreen();
     
-    // 加载排行榜数据
-    this.loadHighScores();
+    // 加载排行榜数据（优先服务器，失败本地）
+    this.loadHighScoresFromServer(() => {
+        // 服务器失败时回退本地
+        this.loadHighScores();
+    });
     
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
     
     // 创建排行榜背景
     this.leaderboardElements.bg = this.add.rectangle(
-        centerX, centerY, 600, 500, 0x000000, 0.8
+        centerX, centerY, 600, 560, 0x000000, 0.8
     ).setStrokeStyle(3, 0x8B4513).setDepth(1000);
     
     // 排行榜标题
@@ -1256,13 +1267,27 @@ showLeaderboard() {
         ).setOrigin(0.5).setDepth(1001);
     }
     
+    // 如果当前用户排名不在前十，追加显示其排名
+    if (typeof this.currentUserRankIndex === 'number' && this.currentUserRankIndex >= 10) {
+        const rankNum = this.currentUserRankIndex + 1;
+        const me = this.highScores[this.currentUserRankIndex];
+        if (me) {
+            this.leaderboardElements.currentUserRank = this.add.text(
+                centerX,
+                centerY + 270,
+                `我的排名：第${rankNum}名（${me.name}: ${me.score}）`,
+                { fontSize: '22px', color: '#FFD700' }
+            ).setOrigin(0.5).setDepth(1001);
+        }
+    }
+
     // 返回按钮
     this.leaderboardElements.backBtn = this.add.rectangle(
-        centerX, centerY + 270, 200, 50, 0x556B2F
+        centerX, centerY + 320, 200, 50, 0x556B2F
     ).setInteractive().setDepth(1001);
     
     this.leaderboardElements.backText = this.add.text(
-        centerX, centerY + 270, '返回', 
+        centerX, centerY + 320, '返回', 
         { fontSize: '24px', color: '#FFFFFF' }
     ).setOrigin(0.5).setDepth(1001);
     
@@ -1285,6 +1310,57 @@ showLeaderboard() {
         this.isShowingLeaderboard = false;
     });
 }
+// 从服务器加载排行榜数据（带本地回退）
+loadHighScoresFromServer(fallback) {
+    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
+    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
+    fetch(url, { method: 'GET' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            this.highScores = (data && Array.isArray(data.scores)) ? data.scores : [];
+            this.highScores.sort((a, b) => b.score - a.score);
+            // 计算当前用户排名（如果有最近提交）
+            this.currentUserRankIndex = -1;
+            if (this.lastSubmittedEntry && this.lastSubmittedEntry.name) {
+                const exactIdx = this.highScores.findIndex(s => s.name === this.lastSubmittedEntry.name && s.score === this.lastSubmittedEntry.score);
+                if (exactIdx >= 0) {
+                    this.currentUserRankIndex = exactIdx;
+                } else {
+                    const byNameIdx = this.highScores.findIndex(s => s.name === this.lastSubmittedEntry.name);
+                    this.currentUserRankIndex = byNameIdx;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('加载排行榜数据失败:', error);
+            if (typeof fallback === 'function') {
+                fallback();
+            } else {
+                this.loadHighScores();
+            }
+        });
+}
+
+// 保存分数到服务器
+saveHighScoreToServer(entry) {
+    const base = (this.apiBaseUrl || '').replace(/\/$/, '');
+    const url = base ? `${base}/leaderboard.php` : 'leaderboard.php';
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
+}
 loadHighScores() {
     if (typeof Storage !== 'undefined') {
         const savedScores = localStorage.getItem('militaryTrainingLeaderboard');
@@ -1292,26 +1368,31 @@ loadHighScores() {
             this.highScores = JSON.parse(savedScores);
         }
     }
-    
-    // 按分数降序排序
+    // 本地排序作为兜底
     this.highScores.sort((a, b) => b.score - a.score);
 }
 
 saveHighScore() {
-    // 添加当前分数到排行榜
-    this.highScores.push({
+    const entry = {
         name: this.playerName,
         score: this.currentScore,
         date: new Date().toISOString()
-    });
-    
-    // 保存到本地存储
-    if (typeof Storage !== 'undefined') {
-        localStorage.setItem(
-            'militaryTrainingLeaderboard', 
-            JSON.stringify(this.highScores)
-        );
-    }
+    };
+    // 记录最近一次提交，便于展示个人排名
+    this.lastSubmittedEntry = entry;
+    // 先写到服务器，失败再回退到本地
+    return this.saveHighScoreToServer(entry)
+        .then(() => this.loadHighScoresFromServer())
+        .catch(() => {
+            // 服务器失败则写入本地
+            this.highScores.push(entry);
+            if (typeof Storage !== 'undefined') {
+                localStorage.setItem(
+                    'militaryTrainingLeaderboard', 
+                    JSON.stringify(this.highScores)
+                );
+            }
+        });
 }
 
 cleanupLeaderboard() {
@@ -1325,6 +1406,10 @@ cleanupLeaderboard() {
         }
     }
     
+    if (this.leaderboardElements.currentUserRank) {
+        this.leaderboardElements.currentUserRank.destroy();
+    }
+
     if (this.leaderboardElements.backBtn) this.leaderboardElements.backBtn.destroy();
     if (this.leaderboardElements.backText) this.leaderboardElements.backText.destroy();
     
