@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>升变，士皆可帅！ - 军训小游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 750px;
+            margin: 20px auto;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            text-decoration: none;
+            color: #333;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        #best-score-display {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        #score-display {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        #game-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            padding: 20px;
+        }
+
+        h1 {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            z-index: 5;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1;
+            max-width: 500px;
+            margin-left: 50px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: flex-start;
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            color: #333;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            pointer-events: auto;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            width: 400px;
+            height: 400px;
+            background-color: rgba(255, 255, 255, 0.35);
+            border-radius: 10px;
+            padding: 10px;
+            touch-action: none; /* 阻止浏览器默认的触摸行为 */
+        }
+
+        .grid-cell {
+            background-color: rgba(255, 255, 255, 0.35);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 5px;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #776e65;
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 军衔主题颜色 */
+        .tile-2 { background: linear-gradient(135deg, #eee4da, #ede0c8); }
+        .tile-4 { background: linear-gradient(135deg, #ede0c8, #f2b179); }
+        .tile-8 { background: linear-gradient(135deg, #f2b179, #f59563); color: white; }
+        .tile-16 { background: linear-gradient(135deg, #f59563, #f67c5f); color: white; }
+        .tile-32 { background: linear-gradient(135deg, #f67c5f, #f65e3b); color: white; }
+        .tile-64 { background: linear-gradient(135deg, #f65e3b, #edcf72); color: white; }
+        .tile-128 { background: linear-gradient(135deg, #edcf72, #edcc61); color: white; font-size: 1.8rem; }
+        .tile-256 { background: linear-gradient(135deg, #edcc61, #edc850); color: white; font-size: 1.8rem; }
+        .tile-512 { background: linear-gradient(135deg, #edc850, #edc53f); color: white; font-size: 1.8rem; }
+        .tile-1024 { background: linear-gradient(135deg, #edc53f, #edc22e); color: white; font-size: 1.5rem; }
+        .tile-2048 { background: linear-gradient(135deg, #edc22e, #3d3d3d); color: white; font-size: 1.5rem; }
+        .tile-4096 { background: linear-gradient(135deg, #3d3d3d, #2d2d2d); color: white; font-size: 1.5rem; }
+        .tile-8192 { background: linear-gradient(135deg, #2d2d2d, #1d1d1d); color: gold; font-size: 1.5rem; }
+        .tile-16384 { background: linear-gradient(135deg, #1d1d1d, #0d0d0d); color: gold; font-size: 1.2rem; }
+        .tile-32768 { background: linear-gradient(135deg, #8b006d, #8b006d); color: gold; font-size: 1.2rem; }
+        .tile-65536 { background: linear-gradient(135deg, #c60656, #c60656); color: gold; font-size: 1.2rem; }
+        .tile-131072 { background: linear-gradient(135deg, #c60656, #c60656); color: gold; font-size: 1.2rem; }
+        
+
+        .game-message {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(238, 228, 218, 0.9);
+            border-radius: 10px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #776e65;
+            backdrop-filter: blur(5px);
+            z-index: 20;
+        }
+
+        .game-message p {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .info-area {
+            display: flex;
+            flex-direction: column;
+            width: 350px;
+            height: 100%;
+            margin-top: 80px;
+        }
+
+        .instructions {
+            text-align: left;
+            width: 100%;
+            line-height: 1.6;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            flex: 0 0 180px; /* 降低高度 */
+            overflow-y: auto;
+            margin-top: 40px; /* 降低位置 */
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* 军衔展示区域 */
+        .ranks-container {
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ranks-container h3 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .ranks-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            overflow-y: auto;
+            max-height: 200px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .rank-item {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .rank-item:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+
+        .rank-item.unlocked {
+            background: rgba(255, 255, 255, 0.9);
+            font-weight: bold;
+        }
+
+        .rank-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 军衔介绍弹窗 */
+        .rank-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .rank-modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 500px;
+            width: 80%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .rank-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .rank-modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .rank-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .rank-modal-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        /* 游戏规则弹窗 */
+        .rules-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .rules-modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 500px;
+            width: 80%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .rules-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .rules-modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .rules-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .rules-modal-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                display: block;
+                padding: 0;
+                overflow: auto;
+            }
+            
+            #game-container {
+                width: 100%;
+                height: auto;
+                min-height: 100vh;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+                position: relative;
+            }
+            
+            #back-button {
+                top: 10px;
+                left: 10px;
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+                position: fixed;
+                z-index: 1001;
+            }
+            
+            .score-container {
+                top: 10px;
+                font-size: 1rem;
+                position: fixed;
+                z-index: 1001;
+                right: 10px;
+                left: auto;
+            }
+            
+            #best-score-display,
+            #score-display {
+                font-size: 1rem;
+                padding: 8px 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                top: 10px;
+                position: static;
+                transform: none;
+                margin: 10px 0;
+                text-align: center;
+            }
+            
+            #game-content {
+                position: static;
+                flex-direction: column;
+                justify-content: flex-start;
+                padding: 10px;
+                height: auto;
+                min-height: calc(100vh - 120px);
+                margin-top: 60px;
+            }
+            
+            #ui-overlay {
+                position: static;
+                height: auto;
+                display: flex;
+                justify-content: space-between;
+                padding: 10px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+                pointer-events: none;
+            }
+
+            .game-area {
+                max-width: 100%;
+                margin-left: 0;
+                align-items: center;
+                width: 100%;
+            }
+            
+            .info-area {
+                width: 100%;
+                max-width: 500px;
+                margin-top: 20px;
+                flex: none;
+                margin-bottom: 20px; /* 添加底部边距 */
+            }
+            
+            .game-grid {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .tile {
+                font-size: 1.8rem;
+            }
+            
+            .tile-128, .tile-256, .tile-512 {
+                font-size: 1.4rem;
+            }
+            
+            .tile-1024, .tile-2048 {
+                font-size: 1.2rem;
+            }
+            
+            button {
+                padding: 10px 15px;
+                font-size: 1rem;
+            }
+            
+            .ranks-list {
+                gap: 5px;
+                max-height: 150px;
+            }
+            
+            .rank-item {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            
+            .instructions {
+                display: none; /* 在移动端隐藏游戏规则区域 */
+            }
+            
+            #rules-button {
+                display: block; /* 在移动端显示规则按钮 */
+                margin-top: 20px;
+                margin-bottom: 20px; /* 添加底部边距 */
+            }
+            
+            /* 减少标题行长度 - 移动端标题更简洁 */
+            h1 {
+                font-size: 1.8rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                width: 90%;
+                margin: 10px auto;
+            }
+            
+            /* 军衔图鉴靠下显示 */
+            .ranks-container {
+                margin-top: auto; /* 将军衔图鉴推到底部 */
+                margin-bottom: 10px;
+            }
+        }
+        
+        /* 在桌面端隐藏规则按钮 */
+        #rules-button {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" id="back-button">←</a>
+
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div class="score-container">
+                <div id="best-score-display">最高分: 0</div>
+                <div id="score-display">分数: 0</div>
+            </div>
+        </div>
+        
+        <h1>升变，士皆可帅！</h1> <!-- 简化标题 -->
+        
+        <div id="game-content">
+            <div class="game-area">
+                <div class="controls">
+                    <button id="restart-button">重新开始</button>
+                    <button id="undo-button" disabled style="display: none;">撤销</button>
+                    <button id="rules-button">游戏规则</button> <!-- 新增的游戏规则按钮 -->
+                </div>
+                
+                <div class="game-container">
+                    <div class="game-grid" id="game-grid"></div>
+                    <div class="game-message" id="game-message">
+                        <p id="message-text"></p>
+                        <button id="try-again-button">再试一次</button>
+                    </div>
+                </div>
+            </div>
+            <p></p>
+            <p></p>
+            <div class="info-area">
+                <div class="instructions">
+                    <h3>游戏规则</h3>
+                    <p>使用键盘箭头键或触摸滑动来移动方块。当两个相同军衔的方块碰撞时，它们会合并晋升！达到上将军衔(2048)即获胜，但可以继续挑战更高分。</p>
+                </div>
+                
+                <div class="ranks-container">
+                    <h3>军衔图鉴</h3>
+                    <div class="ranks-list" id="ranks-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 军衔介绍弹窗 -->
+    <div class="rank-modal" id="rank-modal">
+        <div class="rank-modal-content">
+            <div class="rank-modal-header">
+                <div class="rank-modal-title" id="rank-modal-title"></div>
+                <button class="rank-modal-close" id="rank-modal-close">×</button>
+            </div>
+            <div class="rank-modal-description" id="rank-modal-description"></div>
+        </div>
+    </div>
+
+    <!-- 游戏规则弹窗 -->
+    <div class="rules-modal" id="rules-modal">
+        <div class="rules-modal-content">
+            <div class="rules-modal-header">
+                <div class="rules-modal-title">游戏规则</div>
+                <button class="rules-modal-close" id="rules-modal-close">×</button>
+            </div>
+            <div class="rules-modal-description">
+                <p>使用键盘箭头键或触摸滑动来移动方块。当两个相同军衔的方块碰撞时，它们会合并晋升！达到上将军衔(2048)即获胜，但可以继续挑战更高分。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="Military-promotion.js"></script>
+    
+    <script>
+        // 添加游戏规则弹窗功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const rulesButton = document.getElementById('rules-button');
+            const rulesModal = document.getElementById('rules-modal');
+            const rulesModalClose = document.getElementById('rules-modal-close');
+            
+            // 点击规则按钮显示弹窗
+            if (rulesButton) {
+                rulesButton.addEventListener('click', function() {
+                    rulesModal.style.display = 'flex';
+                });
+            }
+            
+            // 点击关闭按钮隐藏弹窗
+            if (rulesModalClose) {
+                rulesModalClose.addEventListener('click', function() {
+                    rulesModal.style.display = 'none';
+                });
+            }
+            
+            // 点击弹窗外部区域关闭弹窗
+            if (rulesModal) {
+                rulesModal.addEventListener('click', function(e) {
+                    if (e.target === rulesModal) {
+                        rulesModal.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
